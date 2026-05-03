@@ -214,7 +214,7 @@ def get_lesson_message(number: str, lesson: Dict[str, Any]) -> str:
 
 <b>🕜 Время:</b> {time}
 <b>🔢 Урок по счету:</b> {number}
-<b>🚪 Кабиент:</b> {cab}
+<b>🚪 Кабинет:</b> {cab}
 """
 
     return text
@@ -259,7 +259,7 @@ def get_next_lesson_message(
 
 <b>⏳ До звонка:</b> {minutes} минут {seconds} секунд
 <b>🕜 Время:</b> {time}
-<b>🚪 Кабиент:</b> {cab}
+<b>🚪 Кабинет:</b> {cab}
 """
 
     return text
@@ -318,5 +318,22 @@ def get_changes_message(
         return (
             f"<b>🔄 Замены уроков:</b>\n\nЗамен для класса {_grade.upper()} не найдено."
         )
+
+    return text
+
+
+def get_admin_panel_message(total_users: int, user_count_by_grades: Dict[str, int]) -> str:
+    text = f"""🤖 <b>Админ-панель</b>
+
+👤 Всего пользователей: {total_users}
+
+📋 <b>Распределение по классам:</b> """
+    
+    if total_users:
+        if not user_count_by_grades:
+            text += "У пользователей не установлен класс"
+
+        for grade, count in user_count_by_grades.items():
+            text += f"\n• {grade}: {count}"
 
     return text

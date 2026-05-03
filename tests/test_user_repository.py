@@ -146,3 +146,55 @@ async def test_update_invalid_user_grade(sessionmaker, mocker):
     user = await user_repository.update_user_grade(telegram_id, grade)
 
     assert user is None
+
+@pytest.mark.asyncio
+async def test_get_total_users(sessionmaker, mocker):
+    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
+
+    from src.bot.repositories.user_repository import UserRepository
+
+    user_repository = UserRepository()
+
+    no_users = await user_repository.get_total_users()
+
+    assert no_users == 0
+
+    telegram_id = 123
+    user_grade = "11А"
+
+    user = await user_repository.create_user(telegram_id, user_grade)
+
+    assert user is not None
+    assert isinstance(user, User)
+    assert user.telegram_id == telegram_id
+    assert user.grade == user_grade
+
+    users = await user_repository.get_total_users()
+
+    assert users == 1
+
+@pytest.mark.asyncio
+async def test_get_user_count_by_grades(sessionmaker, mocker):
+    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
+
+    from src.bot.repositories.user_repository import UserRepository
+
+    user_repository = UserRepository()
+
+    no_users = await user_repository.get_user_count_by_grades()
+
+    assert no_users == {}
+
+    telegram_id = 123
+    user_grade = "11А"
+
+    user = await user_repository.create_user(telegram_id, user_grade)
+
+    assert user is not None
+    assert isinstance(user, User)
+    assert user.telegram_id == telegram_id
+    assert user.grade == user_grade
+
+    users = await user_repository.get_user_count_by_grades()
+
+    assert users == {"11А": 1}

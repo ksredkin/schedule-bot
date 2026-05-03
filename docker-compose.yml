@@ -32,6 +32,7 @@ services:
       VLESS_PROXY: ${VLESS_PROXY}
       REDIS_HOST: schedule-redis
       REDIS_PORT: 6379
+      ADMIN_ID: ${ADMIN_ID}
     volumes:
       - ./src:/app/src
     networks:

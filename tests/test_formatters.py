@@ -97,7 +97,7 @@ def test_get_lesson_message():
 
 <b>🕜 Время:</b> 08:00 - 09:30
 <b>🔢 Урок по счету:</b> 1
-<b>🚪 Кабиент:</b> 101
+<b>🚪 Кабинет:</b> 101
 """
 
     result = get_lesson_message("1", lesson)
@@ -124,7 +124,7 @@ def test_get_next_lesson_message():
 
 <b>⏳ До звонка:</b> 5 минут 30 секунд
 <b>🕜 Время:</b> 09:45 - 11:15
-<b>🚪 Кабиент:</b> 102
+<b>🚪 Кабинет:</b> 102
 """
     result = get_next_lesson_message(next_time_to_bell, next_lesson)
     assert result == expected_message
@@ -167,7 +167,7 @@ def test_get_next_lesson_message():
 
 <b>⏳ До звонка:</b> 5 минут 30 секунд
 <b>🕜 Время:</b> 10:00 - 11:30
-<b>🚪 Кабиент:</b> 200
+<b>🚪 Кабинет:</b> 200
 """
     result_no_emoji = get_next_lesson_message(next_time_to_bell, no_emoji_lesson)
     assert result_no_emoji == expected_no_emoji
@@ -279,3 +279,27 @@ def test_get_changes_message():
 
     result_none = get_changes_message(None, None)
     assert result_none == "Ошибка: данные замен не найдены"
+
+def test_get_admin_panel_message():
+    from src.bot.utils.formatters import get_admin_panel_message
+
+    total_users = 100
+    user_count_by_grades = {"10А": 30, "10Б": 20, "11А": 50}
+    expected_message = """🤖 <b>Админ-панель</b>
+
+👤 Всего пользователей: 100
+
+📋 <b>Распределение по классам:</b> 
+• 10А: 30
+• 10Б: 20
+• 11А: 50"""
+
+    assert get_admin_panel_message(total_users, user_count_by_grades) == expected_message
+    
+    expected_message = """🤖 <b>Админ-панель</b>
+
+👤 Всего пользователей: 100
+
+📋 <b>Распределение по классам:</b> У пользователей не установлен класс"""
+    
+    assert get_admin_panel_message(total_users, {}) == expected_message
