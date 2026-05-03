@@ -200,3 +200,11 @@ async def test_get_user_count_by_grades(sessionmaker, mocker):
     users = await user_repository.get_user_count_by_grades()
 
     assert users == {"11А": 1}
+
+    second_telegram_id = 456
+
+    user = await user_repository.create_user(second_telegram_id, None)
+
+    users = await user_repository.get_user_count_by_grades()
+
+    assert users == {"11А": 1, "Не указан": 1}

@@ -40,7 +40,7 @@ class UserRepository(UserRepositoryInterface):
         async with session() as conn:
             try:
                 result = await conn.execute(
-                    select(User.grade, func.count(User.id))
+                    select(func.coalesce(User.grade, "Не указан"), func.count(User.id))
                     .group_by(User.grade)
                     .order_by(User.grade)
                 )

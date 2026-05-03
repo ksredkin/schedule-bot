@@ -306,3 +306,19 @@ def test_get_admin_panel_message():
 📋 <b>Распределение по классам:</b> У пользователей не установлен класс"""
 
     assert get_admin_panel_message(total_users, {}) == expected_message
+
+    total_users = 101
+    user_count_by_grades = {"10А": 30, "10Б": 20, "11А": 50, "Не указан": 1}
+    expected_message = """🤖 <b>Админ-панель</b>
+
+👤 Всего пользователей: 101
+
+📋 <b>Распределение по классам:</b> 
+• 10А: 30
+• 10Б: 20
+• 11А: 50
+• Не указан: 1"""
+
+    assert (
+        get_admin_panel_message(total_users, user_count_by_grades) == expected_message
+    )
