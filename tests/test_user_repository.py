@@ -147,6 +147,7 @@ async def test_update_invalid_user_grade(sessionmaker, mocker):
 
     assert user is None
 
+
 @pytest.mark.asyncio
 async def test_get_total_users(sessionmaker, mocker):
     mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
@@ -172,6 +173,7 @@ async def test_get_total_users(sessionmaker, mocker):
     users = await user_repository.get_total_users()
 
     assert users == 1
+
 
 @pytest.mark.asyncio
 async def test_get_user_count_by_grades(sessionmaker, mocker):

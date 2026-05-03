@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 import pytz
@@ -18,6 +19,7 @@ from src.bot.services.user_service import resolve_grade
 from src.bot.utils.changes_cache import get_changes_from_cache
 from src.bot.utils.constants import classes, days_map
 from src.bot.utils.formatters import (
+    get_admin_panel_message,
     get_bell_message,
     get_changes_message,
     get_lesson_message,
@@ -25,7 +27,6 @@ from src.bot.utils.formatters import (
     get_schedule_message,
     get_schedule_today_message,
     get_schedule_tomorrow_message,
-    get_admin_panel_message,
 )
 from src.bot.utils.image_cache import get_image_id_from_cache, set_image_id_in_cache
 from src.bot.utils.logger import Logger
@@ -34,7 +35,6 @@ from src.bot.utils.user_class_cache import (
     get_user_class_from_cache,
     set_user_class_in_cache,
 )
-import os
 
 command_router = Router()
 logger = Logger(__name__).get_logger()
@@ -385,11 +385,15 @@ async def admin(message: types.Message) -> None:
         return
 
     if message.from_user.id != int(admin_id):
-        logger.warning(f"Пользователь @{message.from_user.username} с id {message.from_user.id} не имеет доступа к админ-панели")
+        logger.warning(
+            f"Пользователь @{message.from_user.username} с id {message.from_user.id} не имеет доступа к админ-панели"
+        )
         return
-    
+
     total_users = await UserRepository().get_total_users()
     user_count_by_grades = await UserRepository().get_user_count_by_grades()
 
     await message.answer(get_admin_panel_message(total_users, user_count_by_grades))
-    logger.info(f"Пользователь @{message.from_user.username} с id {message.from_user.id} получил админ-панель")
+    logger.info(
+        f"Пользователь @{message.from_user.username} с id {message.from_user.id} получил админ-панель"
+    )

@@ -280,6 +280,7 @@ def test_get_changes_message():
     result_none = get_changes_message(None, None)
     assert result_none == "Ошибка: данные замен не найдены"
 
+
 def test_get_admin_panel_message():
     from src.bot.utils.formatters import get_admin_panel_message
 
@@ -294,12 +295,14 @@ def test_get_admin_panel_message():
 • 10Б: 20
 • 11А: 50"""
 
-    assert get_admin_panel_message(total_users, user_count_by_grades) == expected_message
-    
+    assert (
+        get_admin_panel_message(total_users, user_count_by_grades) == expected_message
+    )
+
     expected_message = """🤖 <b>Админ-панель</b>
 
 👤 Всего пользователей: 100
 
 📋 <b>Распределение по классам:</b> У пользователей не установлен класс"""
-    
+
     assert get_admin_panel_message(total_users, {}) == expected_message

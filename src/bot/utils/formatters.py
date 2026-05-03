@@ -322,18 +322,20 @@ def get_changes_message(
     return text
 
 
-def get_admin_panel_message(total_users: int, user_count_by_grades: Dict[str, int]) -> str:
+def get_admin_panel_message(
+    total_users: int | None, user_count_by_grades: Dict[str, int | None]
+) -> str:
     text = f"""🤖 <b>Админ-панель</b>
 
-👤 Всего пользователей: {total_users}
+👤 Всего пользователей: {total_users if total_users is not None else "Ошибка"}
 
 📋 <b>Распределение по классам:</b> """
-    
+
     if total_users:
         if not user_count_by_grades:
             text += "У пользователей не установлен класс"
 
         for grade, count in user_count_by_grades.items():
-            text += f"\n• {grade}: {count}"
+            text += f"\n• {grade}: {count if count is not None else 'Ошибка'}"
 
     return text
