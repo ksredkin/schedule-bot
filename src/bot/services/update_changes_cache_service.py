@@ -143,7 +143,7 @@ async def start_update_changes_cache_service(bot: Bot) -> None:
                 if grade is None:
                     continue
 
-                grade = str(grade)
+                grade = str(grade) # type: ignore
                 grade = grade.lower().strip()
 
                 has_changes_for_user = False
