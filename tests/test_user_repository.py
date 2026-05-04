@@ -13,9 +13,9 @@ from src.bot.database.orm_models import User
 
 @pytest.mark.asyncio
 async def test_create_user(sessionmaker, mocker):
-    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
-
     from src.bot.repositories.user_repository import UserRepository
+
+    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
 
     user_repository = UserRepository()
     telegram_id = 123456789
@@ -30,9 +30,9 @@ async def test_create_user(sessionmaker, mocker):
 
 @pytest.mark.asyncio
 async def test_create_existing_user(sessionmaker, mocker):
-    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
-
     from src.bot.repositories.user_repository import UserRepository
+
+    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
 
     user_repository = UserRepository()
     telegram_id = 123456789
@@ -49,9 +49,9 @@ async def test_create_existing_user(sessionmaker, mocker):
 
 @pytest.mark.asyncio
 async def test_get_users(sessionmaker, mocker):
-    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
-
     from src.bot.repositories.user_repository import UserRepository
+
+    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
 
     user_repository = UserRepository()
 
@@ -79,9 +79,9 @@ async def test_get_users(sessionmaker, mocker):
 
 @pytest.mark.asyncio
 async def test_get_user_by_telegram_id(sessionmaker, mocker):
-    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
-
     from src.bot.repositories.user_repository import UserRepository
+
+    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
 
     user_repository = UserRepository()
 
@@ -107,9 +107,9 @@ async def test_get_user_by_telegram_id(sessionmaker, mocker):
 
 @pytest.mark.asyncio
 async def test_update_user_grade(sessionmaker, mocker):
-    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
-
     from src.bot.repositories.user_repository import UserRepository
+
+    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
 
     user_repository = UserRepository()
 
@@ -134,9 +134,9 @@ async def test_update_user_grade(sessionmaker, mocker):
 
 @pytest.mark.asyncio
 async def test_update_invalid_user_grade(sessionmaker, mocker):
-    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
-
     from src.bot.repositories.user_repository import UserRepository
+
+    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
 
     user_repository = UserRepository()
 
@@ -150,9 +150,9 @@ async def test_update_invalid_user_grade(sessionmaker, mocker):
 
 @pytest.mark.asyncio
 async def test_get_total_users(sessionmaker, mocker):
-    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
-
     from src.bot.repositories.user_repository import UserRepository
+
+    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
 
     user_repository = UserRepository()
 
@@ -177,9 +177,9 @@ async def test_get_total_users(sessionmaker, mocker):
 
 @pytest.mark.asyncio
 async def test_get_user_count_by_grades(sessionmaker, mocker):
-    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
-
     from src.bot.repositories.user_repository import UserRepository
+
+    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
 
     user_repository = UserRepository()
 
