@@ -14,9 +14,9 @@ from src.bot.core.exceptions import (
 from src.bot.keyboards.inline import create_cancell_inline_keyboard
 from src.bot.messages.common import start_message
 from src.bot.repositories.user_repository import UserRepository
+from src.bot.services.cache_service import cache_service
 from src.bot.services.schedule_service import get_schedule_by_grade
 from src.bot.services.user_service import resolve_grade
-from src.bot.utils.changes_cache import get_changes_from_cache
 from src.bot.utils.constants import classes, days_map
 from src.bot.utils.formatters import (
     get_admin_panel_message,
@@ -28,13 +28,8 @@ from src.bot.utils.formatters import (
     get_schedule_today_message,
     get_schedule_tomorrow_message,
 )
-from src.bot.utils.image_cache import get_image_id_from_cache, set_image_id_in_cache
 from src.bot.utils.logger import Logger
 from src.bot.utils.time_utils import get_current_lesson, get_time_to_bell
-from src.bot.utils.user_class_cache import (
-    get_user_class_from_cache,
-    set_user_class_in_cache,
-)
 
 command_router = Router()
 logger = Logger(__name__).get_logger()
@@ -48,7 +43,9 @@ async def start(message: types.Message) -> None:
 
     logger.info(f"Пользователь @{message.from_user.username} вызвал команду /start")
 
-    user_class_in_cache = await get_user_class_from_cache(message.from_user.id)
+    user_class_in_cache = await cache_service.get_user_class_from_cache(
+        message.from_user.id
+    )
 
     if user_class_in_cache is None:
         logger.info(
@@ -63,25 +60,27 @@ async def start(message: types.Message) -> None:
             await UserRepository().create_user(
                 telegram_id=message.from_user.id, grade=None
             )
-            await set_user_class_in_cache(message.from_user.id, None)
+            await cache_service.set_user_class_in_cache(message.from_user.id, None)
         else:
             if user.grade:
                 logger.info(
                     f"Класс пользователя @{message.from_user.username} найден в базе данных: {user.grade}, сохраняется в кэше"
                 )
-                await set_user_class_in_cache(message.from_user.id, str(user.grade))
+                await cache_service.set_user_class_in_cache(
+                    message.from_user.id, str(user.grade)
+                )
             else:
                 logger.info(
                     f"Класс пользователя @{message.from_user.username} не установлен в базе данных"
                 )
-                await set_user_class_in_cache(message.from_user.id, None)
+                await cache_service.set_user_class_in_cache(message.from_user.id, None)
 
     elif user_class_in_cache is False:
         logger.info(
             f"Класс пользователя @{message.from_user.username} установлен как None в кэше"
         )
 
-    if await get_image_id_from_cache("start") is None:
+    if await cache_service.get_image_id_from_cache("start") is None:
         try:
             image = types.FSInputFile("./src/bot/img/bot.png")
             message = await message.answer_photo(image, caption=start_message)
@@ -91,12 +90,14 @@ async def start(message: types.Message) -> None:
                 await message.answer(start_message)
                 return
 
-            await set_image_id_in_cache("start", message.photo[-1].file_id)
+            await cache_service.set_image_id_in_cache(
+                "start", message.photo[-1].file_id
+            )
         except TelegramNetworkError:
             logger.warning("Не удалось отправить ответ с фото на /start")
             await message.answer(start_message)
     else:
-        cached_image_id = await get_image_id_from_cache("start")
+        cached_image_id = await cache_service.get_image_id_from_cache("start")
 
         if not isinstance(cached_image_id, str):
             logger.warning(
@@ -357,7 +358,7 @@ async def changes(message: types.Message) -> None:
         f"Пользователь @{message.from_user.username} вызвал команду /changes для класса {grade}"
     )
 
-    changes = await get_changes_from_cache()
+    changes = await cache_service.get_changes_from_cache()
 
     if changes is None:
         await message.answer(

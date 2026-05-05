@@ -17,8 +17,14 @@ from src.bot.core.exceptions import (
 
 @pytest.mark.asyncio
 async def test_resolve_grade_from_cache(mocker: Any) -> None:
+    from src.bot.services.user_service import resolve_grade
+
+    mock = AsyncMock()
+    mock.get_user_class_from_cache.return_value = "10а"
+
     mocker.patch(
-        "src.bot.services.user_service.get_user_class_from_cache", return_value="10а"
+        "src.bot.services.user_service.cache_service",
+        mock,
     )
 
     repo = AsyncMock()
@@ -28,8 +34,6 @@ async def test_resolve_grade_from_cache(mocker: Any) -> None:
     message.text = "/command"
     message.from_user.id = 12345
 
-    from src.bot.services.user_service import resolve_grade
-
     result = await resolve_grade(message, repo, "command")
 
     assert result == "10а"
@@ -37,8 +41,14 @@ async def test_resolve_grade_from_cache(mocker: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_resolve_grade_with_none_sentinel_cache(mocker: Any) -> None:
+    from src.bot.services.user_service import resolve_grade
+
+    mock = AsyncMock()
+    mock.get_user_class_from_cache.return_value = None
+
     mocker.patch(
-        "src.bot.services.user_service.get_user_class_from_cache", return_value=False
+        "src.bot.services.user_service.cache_service",
+        mock,
     )
 
     repo = AsyncMock()
@@ -48,20 +58,21 @@ async def test_resolve_grade_with_none_sentinel_cache(mocker: Any) -> None:
     message.text = "/command"
     message.from_user.id = 12345
 
-    from src.bot.services.user_service import resolve_grade
-
     with pytest.raises(GradeNotSelectedError):
         await resolve_grade(message, repo, "command")
 
 
 @pytest.mark.asyncio
 async def test_resolve_grade_from_database(mocker: Any) -> None:
+    from src.bot.services.user_service import resolve_grade
+
+    mock = AsyncMock()
+    mock.get_user_class_from_cache.return_value = None
+    mock.set_user_class_in_cache.return_value = lambda telegram_id, grade: None
+
     mocker.patch(
-        "src.bot.services.user_service.get_user_class_from_cache", return_value=None
-    )
-    mocker.patch(
-        "src.bot.services.user_service.set_user_class_in_cache",
-        return_value=lambda telegram_id, grade: None,
+        "src.bot.services.user_service.cache_service",
+        mock,
     )
 
     repo = AsyncMock()
@@ -73,8 +84,6 @@ async def test_resolve_grade_from_database(mocker: Any) -> None:
     message.text = "/command"
     message.from_user.id = 12345
 
-    from src.bot.services.user_service import resolve_grade
-
     result = await resolve_grade(message, repo, "command")
 
     assert result == "10А"
@@ -82,20 +91,21 @@ async def test_resolve_grade_from_database(mocker: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_resolve_grade_with_no_message(mocker: Any) -> None:
+    from src.bot.services.user_service import resolve_grade
+
+    mock = AsyncMock()
+    mock.get_user_class_from_cache.return_value = None
+    mock.set_user_class_in_cache.return_value = lambda telegram_id, grade: None
+
     mocker.patch(
-        "src.bot.services.user_service.get_user_class_from_cache", return_value=None
-    )
-    mocker.patch(
-        "src.bot.services.user_service.set_user_class_in_cache",
-        return_value=lambda telegram_id, grade: None,
+        "src.bot.services.user_service.cache_service",
+        mock,
     )
 
     repo = AsyncMock()
     user = Mock()
     user.grade = "10А"
     repo.get_user_by_telegram_id.return_value = user
-
-    from src.bot.services.user_service import resolve_grade
 
     result = await resolve_grade(None, repo, "command")
 
@@ -104,12 +114,15 @@ async def test_resolve_grade_with_no_message(mocker: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_resolve_grade_with_no_message_text(mocker: Any) -> None:
+    from src.bot.services.user_service import resolve_grade
+
+    mock = AsyncMock()
+    mock.get_user_class_from_cache.return_value = None
+    mock.set_user_class_in_cache.return_value = lambda telegram_id, grade: None
+
     mocker.patch(
-        "src.bot.services.user_service.get_user_class_from_cache", return_value=None
-    )
-    mocker.patch(
-        "src.bot.services.user_service.set_user_class_in_cache",
-        return_value=lambda telegram_id, grade: None,
+        "src.bot.services.user_service.cache_service",
+        mock,
     )
 
     repo = AsyncMock()
@@ -121,8 +134,6 @@ async def test_resolve_grade_with_no_message_text(mocker: Any) -> None:
     message.text = None
     message.from_user.id = 12345
 
-    from src.bot.services.user_service import resolve_grade
-
     result = await resolve_grade(message, repo, "command")
 
     assert result is None
@@ -130,12 +141,15 @@ async def test_resolve_grade_with_no_message_text(mocker: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_resolve_grade_with_no_message_from_user(mocker: Any) -> None:
+    from src.bot.services.user_service import resolve_grade
+
+    mock = AsyncMock()
+    mock.get_user_class_from_cache.return_value = None
+    mock.set_user_class_in_cache.return_value = lambda telegram_id, grade: None
+
     mocker.patch(
-        "src.bot.services.user_service.get_user_class_from_cache", return_value=None
-    )
-    mocker.patch(
-        "src.bot.services.user_service.set_user_class_in_cache",
-        return_value=lambda telegram_id, grade: None,
+        "src.bot.services.user_service.cache_service",
+        mock,
     )
 
     repo = AsyncMock()
@@ -147,8 +161,6 @@ async def test_resolve_grade_with_no_message_from_user(mocker: Any) -> None:
     message.text = "/command"
     message.from_user = None
 
-    from src.bot.services.user_service import resolve_grade
-
     result = await resolve_grade(message, repo, "command")
 
     assert result is None
@@ -156,8 +168,14 @@ async def test_resolve_grade_with_no_message_from_user(mocker: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_resolve_grade_with_class_in_message(mocker: Any) -> None:
+    from src.bot.services.user_service import resolve_grade
+
+    mock = AsyncMock()
+    mock.get_user_class_from_cache.return_value = None
+
     mocker.patch(
-        "src.bot.services.user_service.get_user_class_from_cache", return_value=None
+        "src.bot.services.user_service.cache_service",
+        mock,
     )
 
     repo = AsyncMock()
@@ -169,8 +187,6 @@ async def test_resolve_grade_with_class_in_message(mocker: Any) -> None:
     message.text = "/command 8 ТЕХ"
     message.from_user = 12345
 
-    from src.bot.services.user_service import resolve_grade
-
     result = await resolve_grade(message, repo, "command")
 
     assert result == "8 ТЕХ"
@@ -178,8 +194,14 @@ async def test_resolve_grade_with_class_in_message(mocker: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_resolve_grade_with_invalid_class_in_message(mocker: Any) -> None:
+    from src.bot.services.user_service import resolve_grade
+
+    mock = AsyncMock()
+    mock.get_user_class_from_cache.return_value = None
+
     mocker.patch(
-        "src.bot.services.user_service.get_user_class_from_cache", return_value=None
+        "src.bot.services.user_service.cache_service",
+        mock,
     )
 
     repo = AsyncMock()
@@ -191,16 +213,20 @@ async def test_resolve_grade_with_invalid_class_in_message(mocker: Any) -> None:
     message.text = "/command 9Ь"
     message.from_user = 12345
 
-    from src.bot.services.user_service import resolve_grade
-
     with pytest.raises(GradeNotFoundError):
         await resolve_grade(message, repo, "command")
 
 
 @pytest.mark.asyncio
 async def test_resolve_grade_with_invalid_text_in_message(mocker: Any) -> None:
+    from src.bot.services.user_service import resolve_grade
+
+    mock = AsyncMock()
+    mock.get_user_class_from_cache.return_value = None
+
     mocker.patch(
-        "src.bot.services.user_service.get_user_class_from_cache", return_value=None
+        "src.bot.services.user_service.cache_service",
+        mock,
     )
 
     repo = AsyncMock()
@@ -211,8 +237,6 @@ async def test_resolve_grade_with_invalid_text_in_message(mocker: Any) -> None:
     message = AsyncMock()
     message.text = "/command информатика лучше музыки"
     message.from_user = 12345
-
-    from src.bot.services.user_service import resolve_grade
 
     with pytest.raises(InvalidCommandError):
         await resolve_grade(message, repo, "command")

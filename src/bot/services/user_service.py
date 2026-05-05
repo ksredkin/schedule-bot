@@ -6,11 +6,8 @@ from src.bot.core.exceptions import (
     InvalidCommandError,
 )
 from src.bot.interfaces.user_repository import UserRepositoryInterface
+from src.bot.services.cache_service import cache_service
 from src.bot.utils.constants import classes
-from src.bot.utils.user_class_cache import (
-    get_user_class_from_cache,
-    set_user_class_in_cache,
-)
 
 
 async def resolve_grade(
@@ -30,7 +27,7 @@ async def resolve_grade(
         if not message.from_user:
             return None
 
-        user_class = await get_user_class_from_cache(message.from_user.id)
+        user_class = await cache_service.get_user_class_from_cache(message.from_user.id)
 
         if user_class is not None:
             if user_class is False:
@@ -49,7 +46,7 @@ async def resolve_grade(
 
         grade = str(user.grade)
 
-        await set_user_class_in_cache(message.from_user.id, grade)
+        await cache_service.set_user_class_in_cache(message.from_user.id, grade)
 
         return grade
 

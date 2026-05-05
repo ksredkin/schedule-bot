@@ -4,6 +4,7 @@ os.environ["REDIS_PORT"] = "6379"
 os.environ["REDIS_HOST"] = "localhost"
 
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -28,9 +29,12 @@ test_schedule_html = """<!DOCTYPE html>
 
 @pytest.mark.asyncio
 async def test_get_schedule_by_grade_with_redis(mocker: Any) -> None:
+    mock = AsyncMock()
+    mock.get_schedule_from_cache.return_value = {"Понедельник": "Весь день математика"}
+
     mocker.patch(
-        "src.bot.services.schedule_service.get_schedule_from_cache",
-        return_value={"Понедельник": "Весь день математика"},
+        "src.bot.services.schedule_service.cache_service",
+        mock,
     )
 
     from src.bot.services.schedule_service import get_schedule_by_grade
@@ -43,16 +47,18 @@ async def test_get_schedule_by_grade_with_redis(mocker: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_get_schedule_by_grade_without_redis(mocker: Any) -> None:
+    mock = AsyncMock()
+    mock.get_schedule_from_cache.return_value = None
+    mock.set_schedule_in_cache.return_value = lambda grade, schedule: None
+
     mocker.patch(
-        "src.bot.services.schedule_service.get_schedule_from_cache", return_value=None
+        "src.bot.services.schedule_service.cache_service",
+        mock,
     )
+
     mocker.patch(
         "src.bot.services.schedule_service.ApiClient.get_grade_schedule",
         return_value=test_schedule_html,
-    )
-    mocker.patch(
-        "src.bot.services.schedule_service.set_schedule_in_cache",
-        return_value=lambda grade, schedule: None,
     )
 
     from src.bot.services.schedule_service import get_schedule_by_grade
@@ -74,8 +80,13 @@ async def test_get_schedule_by_grade_without_redis(mocker: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_get_schedule_by_grade_without_redis_and_html(mocker: Any) -> None:
+    mock = AsyncMock()
+    mock.get_schedule_from_cache.return_value = None
+    mock.set_schedule_in_cache.return_value = lambda grade, schedule: None
+
     mocker.patch(
-        "src.bot.services.schedule_service.get_schedule_from_cache", return_value=None
+        "src.bot.services.schedule_service.cache_service",
+        mock,
     )
     mocker.patch(
         "src.bot.services.schedule_service.ApiClient.get_grade_schedule",
