@@ -5,8 +5,8 @@ from aiogram import Bot
 
 from src.bot.core.config import MINUTES_TO_CHECK_CHANGES
 from src.bot.repositories.user_repository import UserRepository
+from src.bot.services.cache_service import cache_service
 from src.bot.utils.api_client import ApiClient
-from src.bot.utils.changes_cache import get_changes_from_cache, set_changes_in_cache
 from src.bot.utils.csv_utils import get_changes
 from src.bot.utils.formatters import get_changes_message
 from src.bot.utils.logger import Logger
@@ -107,7 +107,7 @@ async def start_update_changes_cache_service(bot: Bot) -> None:
     if first_raw_rows:
         current_parsed_all = parse_changes_table_rows(first_raw_rows)
         if current_parsed_all is not None:
-            await set_changes_in_cache(current_parsed_all)
+            await cache_service.set_changes_in_cache(current_parsed_all)
     else:
         logger.warning("Не удалось получить новые данные, пропуск...")
 
@@ -126,14 +126,14 @@ async def start_update_changes_cache_service(bot: Bot) -> None:
             await asyncio.sleep(MINUTES_TO_CHECK_CHANGES * 60)
             continue
 
-        old_parsed_all = await get_changes_from_cache()
+        old_parsed_all = await cache_service.get_changes_from_cache()
 
         if current_parsed_all != old_parsed_all:
             users = await UserRepository.get_users()
 
             if not users:
                 logger.info("Нет пользователей для рассылки обновлений")
-                await set_changes_in_cache(current_parsed_all)
+                await cache_service.set_changes_in_cache(current_parsed_all)
                 await asyncio.sleep(MINUTES_TO_CHECK_CHANGES * 60)
                 continue
 
@@ -181,7 +181,7 @@ async def start_update_changes_cache_service(bot: Bot) -> None:
                         f"Ошибка отправки пользователю {user.telegram_id}: {e}"
                     )
 
-            await set_changes_in_cache(current_parsed_all)
+            await cache_service.set_changes_in_cache(current_parsed_all)
             logger.info("Рассылка обновлений завершена")
         else:
             logger.info("Изменений в таблице нет")
