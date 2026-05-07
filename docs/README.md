@@ -10,6 +10,9 @@
 ![BeautifulSoup](https://img.shields.io/badge/BeautifulSoup-4CAF50?style=for-the-badge)
 ![Poetry](https://img.shields.io/badge/Poetry-60A5FA?style=for-the-badge\&logo=poetry\&logoColor=white)
 ![Pytest](https://img.shields.io/badge/Pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)
+![Ruff](https://img.shields.io/badge/Ruff-FCC21B?style=for-the-badge&logo=ruff&logoColor=black)
+![Mypy](https://img.shields.io/badge/mypy-checked-1f425f?style=for-the-badge)
+![Sentry](https://img.shields.io/badge/Sentry-362D59?style=for-the-badge&logo=sentry&logoColor=white)
 
 ## 📌 Описание
 
@@ -25,7 +28,11 @@ Schedule Bot — это Telegram-бот для удобного просмотр
 
 🧪 Покрытие кода тестами: **63%**
 
-📈 Проект находится в активной разработке и продолжает расти
+🛠 **Качество кода:** проект проходит проверку **Ruff** (линтинг) и **Mypy** (статическая типизация)
+
+📡 **Мониторинг:** Интеграция с **Sentry** для отслеживания ошибок в реальном времени
+
+🔄 **CI/CD:** Автоматическое тестирование и линтинг при каждом Push (GitHub Actions)
 
 ## 🎯 Возможности
 - 📅 Просмотр расписания на сегодня

@@ -3,12 +3,14 @@ import os
 import subprocess
 import sys
 
+import sentry_sdk
 from aiogram import Bot, Dispatcher, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.types import BotCommand
 from aiohttp_socks._errors import ProxyTimeoutError
 from dotenv import load_dotenv
+from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from singbox2proxy import SingBoxProxy
 
 from src.bot.core.config import BOT_PHOTO_PATH
@@ -32,6 +34,21 @@ bot_commands = [
     BotCommand(command="lesson", description="ℹ️ Информация о текущем уроке"),
     BotCommand(command="set_my_class", description="⚙️ Выбрать класс по умолчанию"),
 ]
+
+
+def init_sentry() -> None:
+    dsn = os.getenv("SENTRY_DSN")
+    if not dsn:
+        logger.info("SENTRY_DSN не найден. Запуск без мониторинга ошибок.")
+        return
+
+    sentry_sdk.init(
+        dsn=dsn,
+        integrations=[AioHttpIntegration()],
+        traces_sample_rate=1.0,
+        send_default_pii=True,
+    )
+    logger.info("Мониторинг Sentry успешно запущен")
 
 
 async def setup_bot(bot: Bot) -> None:
@@ -92,6 +109,7 @@ async def start_bot(bot: Bot) -> None:
 
 
 async def main() -> None:
+    init_sentry()
     try:
         token = os.getenv("TOKEN")
         if not isinstance(token, str):

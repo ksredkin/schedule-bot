@@ -33,6 +33,7 @@ services:
       REDIS_HOST: schedule-redis
       REDIS_PORT: 6379
       ADMIN_ID: ${ADMIN_ID}
+      SENTRY_DSN: ${SENTRY_DSN}
     healthcheck:
       test: ["CMD-SHELL", "pgrep python || exit 1"]
       interval: 30s
