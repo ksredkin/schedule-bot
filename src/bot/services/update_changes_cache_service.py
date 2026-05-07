@@ -51,7 +51,6 @@ async def get_changes_table_rows() -> list[list[str]] | None:
         return None
 
 
-# Сгенерировано Gemini
 def parse_changes_table_rows(
     rows: list[list[str]],
 ) -> dict[str, dict[str, list[dict[str, str]]]] | None:
@@ -176,6 +175,7 @@ async def start_update_changes_cache_service(bot: Bot) -> None:
 
                 try:
                     await bot.send_message(int(user.telegram_id), text)
+                    await asyncio.sleep(0.05)
                 except Exception as e:
                     logger.warning(
                         f"Ошибка отправки пользователю {user.telegram_id}: {e}"
