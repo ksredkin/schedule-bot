@@ -29,6 +29,7 @@ from src.bot.utils.formatters import (
     get_schedule_tomorrow_message,
 )
 from src.bot.utils.logger import Logger
+from src.bot.utils.parser import get_changes_url
 from src.bot.utils.time_utils import get_current_lesson, get_time_to_bell
 
 command_router = Router()
@@ -366,7 +367,16 @@ async def changes(message: types.Message) -> None:
         )
         return
 
-    await message.answer(get_changes_message(changes, grade.lower()))
+    changes_table_url = await cache_service.get_changes_url_from_cache()
+
+    if not changes_table_url:
+        logger.warning(
+            "Не удалось получить ссылку на страницу с заменами из кэша, пробуем получить напрямую"
+        )
+        changes_table_url = await get_changes_url()
+        await cache_service.set_changes_url_in_cache(changes_table_url)
+
+    await message.answer(get_changes_message(changes, grade.lower(), changes_table_url), disable_web_page_preview=True)
 
 
 @command_router.message(Command("admin"))

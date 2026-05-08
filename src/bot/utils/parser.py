@@ -1,8 +1,11 @@
+import re
 from typing import Any, Dict
 
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 
+from src.bot.utils.api_client import ApiClient
+from src.bot.utils.csv_utils import get_changes
 from src.bot.utils.logger import Logger
 
 logger = Logger(__name__).get_logger()
@@ -96,4 +99,105 @@ def parse_changes_url(html: str) -> str | None:
         return url
     except Exception as e:
         logger.critical(f"Не удалось спарсить URL изменений: {e}")
+        return None
+
+
+def parse_changes_table_rows(
+    rows: list[list[str]],
+) -> dict[str, dict[str, list[dict[str, str]]]] | None:
+    result: dict[str, dict[str, list[dict[str, str]]]] = {}
+    current_date = None
+    collecting_data = False
+    date_pattern = re.compile(r"(\d{2}\.\d{2}\.\d{4})")
+
+    for row in rows:
+        row_text = " ".join(filter(None, map(str, row)))
+        date_match = date_pattern.search(row_text)
+
+        if date_match:
+            current_date = date_match.group(1)
+            if current_date not in result:
+                result[current_date] = {}
+            collecting_data = False
+            continue
+
+        row_joined = "".join(map(str, row))
+        if "Урок" in row_joined and "Предмет" in row_joined:
+            collecting_data = True
+            continue
+
+        if collecting_data and len(row) >= 2 and row[0] and row[1]:
+            if str(row[0]).strip().lower() == "урок":
+                continue
+
+            if current_date:
+                class_name = str(row[1]).strip().lower()
+                if class_name not in result[current_date]:
+                    result[current_date][class_name] = []
+
+                result[current_date][class_name].append(
+                    {
+                        "lesson_num": str(row[0]).strip(),
+                        "subject_orig": str(row[2]).strip(),
+                        "teacher": str(row[3]).strip(),
+                        "subject_new": str(row[4]).strip(),
+                        "room": str(row[5]).strip() if len(row) > 5 else "",
+                    }
+                )
+
+        if not any(row):
+            collecting_data = False
+
+    return result
+
+
+async def get_changes_table_rows() -> list[list[str]] | None:
+    try:
+        changes_url = await get_changes_url()
+
+        if not changes_url:
+            logger.warning(
+                "Не удалось получить ссылку на страницу с заменами, пропуск получения данных о заменах"
+            )
+            return None
+
+        changes_url_without_https_and_edit = changes_url[8:].split("/")[:-1]
+        changes_url_without_https_and_edit.append("export?format=csv")
+        download_url = "https://" + "/".join(changes_url_without_https_and_edit)
+
+        csv_text = await ApiClient.get_file(download_url)
+
+        if not csv_text:
+            logger.warning("Полученный CSV с изменениями пустой")
+            return None
+
+        table_rows = get_changes(csv_text)
+
+        return table_rows
+    except Exception as e:
+        logger.critical(f"Не удалось получить строки таблицы изменений: {e}")
+        return None
+
+
+async def get_changes_url() -> str | None:
+    try:
+        main_page = await ApiClient.get_main_page()
+
+        if not main_page:
+            logger.warning(
+                "Не удалось получить главную страницу для извлечения ссылки на замены"
+            )
+            return None
+
+        changes_url = parse_changes_url(main_page)
+
+        if not changes_url:
+            logger.warning(
+                "Не удалось найти ссылку на страницу с заменами на главной странице"
+            )
+            return None
+
+        return changes_url
+    except Exception as e:
+        logger.critical(f"Не удалось получить ссылку на таблицу замен: {e}")
         return None

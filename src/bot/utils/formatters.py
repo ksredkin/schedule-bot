@@ -276,7 +276,9 @@ def get_bell_message(time_to_bell: timedelta) -> str:
 
 
 def get_changes_message(
-    all_changes: Dict[str, Dict[str, List[Dict[str, str]]]], _grade: str
+    all_changes: Dict[str, Dict[str, List[Dict[str, str]]]],
+    _grade: str,
+    table_url: str | None = None,
 ) -> str:
     if not isinstance(all_changes, dict) or not isinstance(_grade, str):
         return "Ошибка: данные замен не найдены"
@@ -300,16 +302,21 @@ def get_changes_message(
 
                 text += f"{l_num}. {s_orig}"
 
-                if s_new and s_new != s_orig:
-                    text += f" ➔ <b>{s_new}</b>"
+                is_cancelled = (
+                    not s_new and (not teacher or teacher.lower() == "нет") and not room
+                )
 
-                if teacher and teacher.lower() != "нет":
-                    text += f" ({teacher})"
-                elif teacher and teacher.lower() == "нет":
-                    text += " (❌ Урока нет)"
+                if is_cancelled:
+                    text += " (❌ Урок отменен)"
+                else:
+                    if s_new and s_new.lower() != s_orig.lower():
+                        text += f" ➔ <b>{s_new}</b>"
 
-                if room:
-                    text += f" | каб. {room}"
+                    if teacher and teacher.lower() != "нет":
+                        text += f" ({teacher})"
+
+                    if room:
+                        text += f" | каб. {room}"
 
                 text += "\n"
             text += "\n"
@@ -318,6 +325,9 @@ def get_changes_message(
         return (
             f"<b>🔄 Замены уроков:</b>\n\nЗамен для класса {_grade.upper()} не найдено."
         )
+
+    if table_url:
+        text += f"🔗 <a href='{table_url}'>Посмотреть оригинал таблицы</a>"
 
     return text
 
