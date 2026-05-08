@@ -369,14 +369,22 @@ async def changes(message: types.Message) -> None:
 
     changes_table_url = await cache_service.get_changes_url_from_cache()
 
-    if not changes_table_url:
+    if not isinstance(changes_table_url, str):
         logger.warning(
             "Не удалось получить ссылку на страницу с заменами из кэша, пробуем получить напрямую"
         )
         changes_table_url = await get_changes_url()
+        if not isinstance(changes_table_url, str):
+            await message.answer(
+                "🚫 <b>Ошибка:</b> не удалось получить ссылку на страницу с заменами. Попробуйте позже."
+            )
+            return
         await cache_service.set_changes_url_in_cache(changes_table_url)
 
-    await message.answer(get_changes_message(changes, grade.lower(), changes_table_url), disable_web_page_preview=True)
+    await message.answer(
+        get_changes_message(changes, grade.lower(), changes_table_url),
+        disable_web_page_preview=True,
+    )
 
 
 @command_router.message(Command("admin"))

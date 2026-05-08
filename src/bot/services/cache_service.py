@@ -103,7 +103,7 @@ class CacheService:
     async def set_changes_url_in_cache(self, url: str) -> None:
         await self.set("url", "changes", url, expire=3600)
 
-    async def get_changes_url_from_cache(self) -> str | None:
+    async def get_changes_url_from_cache(self) -> str | bool | None:
         return await self.get("url", "changes")
 
 

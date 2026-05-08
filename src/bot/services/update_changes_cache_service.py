@@ -101,7 +101,9 @@ async def start_update_changes_cache_service(bot: Bot) -> None:
                 )
 
                 try:
-                    await bot.send_message(int(user.telegram_id), text, disable_web_page_preview=True)
+                    await bot.send_message(
+                        int(user.telegram_id), text, disable_web_page_preview=True
+                    )
                     await asyncio.sleep(0.05)
                 except Exception as e:
                     logger.warning(

@@ -1,5 +1,12 @@
-from src.bot.utils.parser import parse_changes_url, parse_schedule, parse_changes_table_rows
-from unittest.mock import AsyncMock
+import pytest
+
+from src.bot.utils.parser import (
+    get_changes_table_rows,
+    get_changes_url,
+    parse_changes_table_rows,
+    parse_changes_url,
+    parse_schedule,
+)
 
 test_schedule_html = """<!DOCTYPE html>
 <html>
@@ -63,87 +70,127 @@ def test_parse_changes_table_rows() -> None:
         ["", "", "", "", "", ""],
         ["", "", "01.01.2026", "", "", ""],
         ["Урок", "Класс", "Предмет", "Заменяющий учитель", "Предмет", "Кабинет"],
-        ["1", "7Д", "Разговоры о важном", "нет", "", ""], 
+        ["1", "7Д", "Разговоры о важном", "нет", "", ""],
         ["2", "7Д", "Математика", "Иванов И.И.", "Математика", "101"],
     ]
 
-    correct_test_data = {"01.01.2026": {"7д": [{"lesson_num": "1", "subject_orig": "Разговоры о важном", "subject_new": "", "teacher": "нет", "room": ""}, {"lesson_num": "2", "subject_orig": "Математика", "subject_new": "Математика", "teacher": "Иванов И.И.", "room": "101"}]}}
+    correct_test_data = {
+        "01.01.2026": {
+            "7д": [
+                {
+                    "lesson_num": "1",
+                    "subject_orig": "Разговоры о важном",
+                    "subject_new": "",
+                    "teacher": "нет",
+                    "room": "",
+                },
+                {
+                    "lesson_num": "2",
+                    "subject_orig": "Математика",
+                    "subject_new": "Математика",
+                    "teacher": "Иванов И.И.",
+                    "room": "101",
+                },
+            ]
+        }
+    }
 
     changes = parse_changes_table_rows(test_data)
     assert changes == correct_test_data
 
 
-import pytest
-from src.bot.utils.parser import get_changes_url, get_changes_table_rows
-
 @pytest.mark.asyncio
 async def test_get_changes_url_success(mocker):
     mock_html = "<html><body>Some content</body></html>"
     mock_url = "https://docs.google.com/spreadsheets/d/123/edit"
-    
-    mock_get_page = mocker.patch("src.bot.utils.parser.ApiClient.get_main_page", return_value=mock_html)
-    mock_parse = mocker.patch("src.bot.utils.parser.parse_changes_url", return_value=mock_url)
-    
+
+    mock_get_page = mocker.patch(
+        "src.bot.utils.parser.ApiClient.get_main_page", return_value=mock_html
+    )
+    mock_parse = mocker.patch(
+        "src.bot.utils.parser.parse_changes_url", return_value=mock_url
+    )
+
     result = await get_changes_url()
-    
+
     assert result == mock_url
     mock_get_page.assert_called_once()
     mock_parse.assert_called_once_with(mock_html)
 
+
 @pytest.mark.asyncio
 async def test_get_changes_url_main_page_fail(mocker):
     mocker.patch("src.bot.utils.parser.ApiClient.get_main_page", return_value=None)
-    
+
     result = await get_changes_url()
-    
+
     assert result is None
+
 
 @pytest.mark.asyncio
 async def test_get_changes_url_exception(mocker):
-    mocker.patch("src.bot.utils.parser.ApiClient.get_main_page", side_effect=Exception("Network error"))
-    
+    mocker.patch(
+        "src.bot.utils.parser.ApiClient.get_main_page",
+        side_effect=Exception("Network error"),
+    )
+
     result = await get_changes_url()
-    
+
     assert result is None
+
 
 @pytest.mark.asyncio
 async def test_get_changes_table_rows_success(mocker):
     mock_url = "https://docs.google.com/spreadsheets/d/123/edit"
-    expected_download_url = "https://docs.google.com/spreadsheets/d/123/export?format=csv"
+    expected_download_url = (
+        "https://docs.google.com/spreadsheets/d/123/export?format=csv"
+    )
     mock_csv_text = "col1,col2\nval1,val2"
     mock_rows = [["col1", "col2"], ["val1", "val2"]]
-    
+
     mocker.patch("src.bot.utils.parser.get_changes_url", return_value=mock_url)
-    mock_get_file = mocker.patch("src.bot.utils.parser.ApiClient.get_file", return_value=mock_csv_text)
-    mock_get_changes = mocker.patch("src.bot.utils.parser.get_changes", return_value=mock_rows)
-    
+    mock_get_file = mocker.patch(
+        "src.bot.utils.parser.ApiClient.get_file", return_value=mock_csv_text
+    )
+    mock_get_changes = mocker.patch(
+        "src.bot.utils.parser.get_changes", return_value=mock_rows
+    )
+
     result = await get_changes_table_rows()
-    
+
     assert result == mock_rows
     mock_get_file.assert_called_once_with(expected_download_url)
     mock_get_changes.assert_called_once_with(mock_csv_text)
 
+
 @pytest.mark.asyncio
 async def test_get_changes_table_rows_url_fail(mocker):
     mocker.patch("src.bot.utils.parser.get_changes_url", return_value=None)
-    
+
     result = await get_changes_table_rows()
-    
+
     assert result is None
+
 
 @pytest.mark.asyncio
 async def test_get_changes_table_rows_empty_csv(mocker):
-    mocker.patch("src.bot.utils.parser.get_changes_url", return_value="https://some-url.com/edit")
+    mocker.patch(
+        "src.bot.utils.parser.get_changes_url", return_value="https://some-url.com/edit"
+    )
     mocker.patch("src.bot.utils.parser.ApiClient.get_file", return_value=None)
-    
+
     result = await get_changes_table_rows()
-    
+
     assert result is None
+
 
 @pytest.mark.asyncio
 async def test_get_changes_table_rows_exception(mocker):
-    mocker.patch("src.bot.utils.parser.get_changes_url", side_effect=RuntimeError("Unexpected error"))
-    
+    mocker.patch(
+        "src.bot.utils.parser.get_changes_url",
+        side_effect=RuntimeError("Unexpected error"),
+    )
+
     result = await get_changes_table_rows()
-    
+
     assert result is None
