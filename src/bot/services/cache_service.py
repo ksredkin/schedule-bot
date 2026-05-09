@@ -101,7 +101,7 @@ class CacheService:
         await self.set("schedule", grade.upper(), json.dumps(schedule))
 
     async def set_changes_url_in_cache(self, url: str) -> None:
-        await self.set("url", "changes", url, expire=3600)
+        await self.set("url", "changes", url)
 
     async def get_changes_url_from_cache(self) -> str | bool | None:
         return await self.get("url", "changes")

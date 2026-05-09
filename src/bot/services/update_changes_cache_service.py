@@ -57,7 +57,10 @@ async def start_update_changes_cache_service(bot: Bot) -> None:
                 continue
 
             changes_table_url = await get_changes_url()
-            if changes_table_url:
+            if (
+                changes_table_url != await cache_service.get_changes_url_from_cache()
+                and changes_table_url is not None
+            ):
                 await cache_service.set_changes_url_in_cache(changes_table_url)
 
             for user in users:
