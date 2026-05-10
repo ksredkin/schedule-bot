@@ -6,17 +6,11 @@ from aiogram import Router, types
 from aiogram.exceptions import TelegramNetworkError
 from aiogram.filters import Command, CommandStart
 
-from src.bot.core.exceptions import (
-    GradeNotFoundError,
-    GradeNotSelectedError,
-    InvalidCommandError,
-)
 from src.bot.keyboards.inline import create_cancell_inline_keyboard
 from src.bot.messages.common import start_message
 from src.bot.repositories.user_repository import UserRepository
 from src.bot.services.cache_service import cache_service
 from src.bot.services.schedule_service import get_schedule_by_grade
-from src.bot.services.user_service import resolve_grade
 from src.bot.utils.constants import classes, days_map
 from src.bot.utils.formatters import (
     get_admin_panel_message,
@@ -36,7 +30,7 @@ command_router = Router()
 logger = Logger(__name__).get_logger()
 
 
-@command_router.message(CommandStart())
+@command_router.message(CommandStart(), flags={"need_grade": False})
 async def start(message: types.Message) -> None:
     if not message.from_user:
         logger.warning("Получено сообщение без информации о пользователе")
@@ -110,19 +104,12 @@ async def start(message: types.Message) -> None:
         await message.answer_photo(cached_image_id, caption=start_message)
 
 
-@command_router.message(Command("schedule"))
-async def schedule(message: types.Message) -> None:
+@command_router.message(
+    Command("schedule"), flags={"need_grade": True, "cmd": "schedule"}
+)
+async def schedule(message: types.Message, grade: str) -> None:
     if not message.from_user:
         logger.warning("Получено сообщение без информации о пользователе")
-        return
-
-    try:
-        grade = await resolve_grade(message, UserRepository(), "schedule")
-    except (GradeNotSelectedError, GradeNotFoundError, InvalidCommandError) as e:
-        await message.answer(f"🚫 <b>Ошибка:</b> {str(e)}")
-        return
-
-    if not grade:
         return
 
     logger.info(
@@ -138,8 +125,10 @@ async def schedule(message: types.Message) -> None:
     await message.answer(get_schedule_message(rasp))
 
 
-@command_router.message(Command("schedule_today"))
-async def schedule_today(message: types.Message) -> None:
+@command_router.message(
+    Command("schedule_today"), flags={"need_grade": True, "cmd": "schedule_today"}
+)
+async def schedule_today(message: types.Message, grade: str) -> None:
     if not message.from_user:
         logger.warning("Получено сообщение без информации о пользователе")
         return
@@ -149,15 +138,6 @@ async def schedule_today(message: types.Message) -> None:
 
     if not current_day:
         await message.answer("🏝️ Сегодня выходной!")
-        return
-
-    try:
-        grade = await resolve_grade(message, UserRepository(), "schedule_today")
-    except (GradeNotSelectedError, GradeNotFoundError, InvalidCommandError) as e:
-        await message.answer(f"🚫 <b>Ошибка:</b> {str(e)}")
-        return
-
-    if not grade:
         return
 
     logger.info(
@@ -179,8 +159,10 @@ async def schedule_today(message: types.Message) -> None:
     await message.answer(get_schedule_today_message(today_schedule, current_day))
 
 
-@command_router.message(Command("schedule_tomorrow"))
-async def schedule_tomorrow(message: types.Message) -> None:
+@command_router.message(
+    Command("schedule_tomorrow"), flags={"need_grade": True, "cmd": "schedule_tomorrow"}
+)
+async def schedule_tomorrow(message: types.Message, grade: str) -> None:
     if not message.from_user:
         logger.warning("Получено сообщение без информации о пользователе")
         return
@@ -190,15 +172,6 @@ async def schedule_tomorrow(message: types.Message) -> None:
 
     if not day_tomorrow:
         await message.answer("🏝️ Завтра выходной!")
-        return
-
-    try:
-        grade = await resolve_grade(message, UserRepository(), "schedule_tomorrow")
-    except (GradeNotSelectedError, GradeNotFoundError, InvalidCommandError) as e:
-        await message.answer(f"🚫 <b>Ошибка:</b> {str(e)}")
-        return
-
-    if not grade:
         return
 
     logger.info(
@@ -222,8 +195,8 @@ async def schedule_tomorrow(message: types.Message) -> None:
     )
 
 
-@command_router.message(Command("lesson"))
-async def lesson(message: types.Message) -> None:
+@command_router.message(Command("lesson"), flags={"need_grade": True, "cmd": "lesson"})
+async def lesson(message: types.Message, grade: str) -> None:
     if not message.from_user:
         logger.warning("Получено сообщение без информации о пользователе")
         return
@@ -233,15 +206,6 @@ async def lesson(message: types.Message) -> None:
 
     if not current_day:
         await message.answer("🏝️ Сегодня выходной!")
-        return
-
-    try:
-        grade = await resolve_grade(message, UserRepository(), "lesson")
-    except (GradeNotSelectedError, GradeNotFoundError, InvalidCommandError) as e:
-        await message.answer(f"🚫 <b>Ошибка:</b> {str(e)}")
-        return
-
-    if not grade:
         return
 
     logger.info(
@@ -280,11 +244,15 @@ async def lesson(message: types.Message) -> None:
     await message.answer(get_lesson_message(number, lesson))
 
 
-@command_router.message(Command("bell"))
-async def bell(message: types.Message) -> None:
+@command_router.message(Command("bell"), flags={"need_grade": True, "cmd": "bell"})
+async def bell(message: types.Message, grade: str) -> None:
     if not message.from_user:
         logger.warning("Получено сообщение без информации о пользователе")
         return
+
+    logger.info(
+        f"Пользователь @{message.from_user.username} вызвал команду /bell для класса {grade}"
+    )
 
     now = datetime.now()
     current_day = days_map.get(now.weekday())
@@ -292,19 +260,6 @@ async def bell(message: types.Message) -> None:
     if not current_day:
         await message.answer("🏝️ Сегодня выходной!")
         return
-
-    try:
-        grade = await resolve_grade(message, UserRepository(), "bell")
-    except (GradeNotSelectedError, GradeNotFoundError, InvalidCommandError) as e:
-        await message.answer(f"🚫 <b>Ошибка:</b> {str(e)}")
-        return
-
-    if not grade:
-        return
-
-    logger.info(
-        f"Пользователь @{message.from_user.username} вызвал команду /bell для класса {grade}"
-    )
 
     rasp = await get_schedule_by_grade(grade)
 
@@ -322,7 +277,7 @@ async def bell(message: types.Message) -> None:
     await message.answer(get_bell_message(time_to_bell))
 
 
-@command_router.message(Command("set_my_class"))
+@command_router.message(Command("set_my_class"), flags={"need_grade": False})
 async def set_my_class(message: types.Message) -> None:
     if not message.from_user:
         logger.warning("Получено сообщение без информации о пользователе")
@@ -340,19 +295,12 @@ async def set_my_class(message: types.Message) -> None:
     )
 
 
-@command_router.message(Command("changes"))
-async def changes(message: types.Message) -> None:
+@command_router.message(
+    Command("changes"), flags={"need_grade": True, "cmd": "changes"}
+)
+async def changes(message: types.Message, grade: str) -> None:
     if not message.from_user:
         logger.warning("Получено сообщение без информации о пользователе")
-        return
-
-    try:
-        grade = await resolve_grade(message, UserRepository(), "changes")
-    except (GradeNotSelectedError, GradeNotFoundError, InvalidCommandError) as e:
-        await message.answer(f"🚫 <b>Ошибка:</b> {str(e)}")
-        return
-
-    if not grade:
         return
 
     logger.info(
@@ -387,7 +335,7 @@ async def changes(message: types.Message) -> None:
     )
 
 
-@command_router.message(Command("admin"))
+@command_router.message(Command("admin"), flags={"need_grade": False})
 async def admin(message: types.Message) -> None:
     if not message.from_user:
         logger.warning("Получено сообщение без информации о пользователе")

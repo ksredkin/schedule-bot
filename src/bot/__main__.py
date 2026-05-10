@@ -17,6 +17,10 @@ from src.bot.core.config import BOT_PHOTO_PATH
 from src.bot.handlers.callback import callback_router
 from src.bot.handlers.command import command_router
 from src.bot.messages.common import before_start_description, profile_description
+from src.bot.middlewares.grade import GradeMiddleware
+from src.bot.middlewares.throttling import ThrottlingMiddleware
+from src.bot.redis_client.client import r
+from src.bot.services.throttling_service import ThrottlingService
 from src.bot.services.update_changes_cache_service import (
     start_update_changes_cache_service,
 )
@@ -97,6 +101,12 @@ async def start_bot(bot: Bot) -> None:
         await setup_bot(bot)
 
         dp = Dispatcher()
+
+        throttling_service = ThrottlingService(r)
+        dp.message.middleware(ThrottlingMiddleware(throttling_service))
+
+        dp.message.middleware(GradeMiddleware())
+
         dp.include_router(command_router)
         dp.include_router(callback_router)
 
