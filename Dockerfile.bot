@@ -5,6 +5,8 @@ WORKDIR /app
 RUN pip install poetry
 
 COPY pyproject.toml poetry.lock /app/
+COPY alembic.ini /app/
+
 RUN poetry config virtualenvs.create false
 RUN poetry install --no-root --only main
 

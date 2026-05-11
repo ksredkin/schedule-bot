@@ -16,7 +16,9 @@ from singbox2proxy import SingBoxProxy
 from src.bot.core.config import BOT_PHOTO_PATH
 from src.bot.handlers.callback import callback_router
 from src.bot.handlers.command import command_router
+from src.bot.handlers.message import message_router
 from src.bot.messages.common import before_start_description, profile_description
+from src.bot.middlewares.admin import AdminMiddleware
 from src.bot.middlewares.grade import GradeMiddleware
 from src.bot.middlewares.throttling import ThrottlingMiddleware
 from src.bot.redis_client.client import r
@@ -37,6 +39,7 @@ bot_commands = [
     BotCommand(command="changes", description="🔄 Замены"),
     BotCommand(command="lesson", description="ℹ️ Информация о текущем уроке"),
     BotCommand(command="set_my_class", description="⚙️ Выбрать класс по умолчанию"),
+    BotCommand(command="review", description="✍️ Оставить отзыв или идею"),
 ]
 
 
@@ -98,17 +101,19 @@ async def start_bot(bot: Bot) -> None:
         load_dotenv()
 
         subprocess.run(["alembic", "upgrade", "head"])
-        await setup_bot(bot)
+        # await setup_bot(bot)
 
         dp = Dispatcher()
 
         throttling_service = ThrottlingService(r)
         dp.message.middleware(ThrottlingMiddleware(throttling_service))
 
+        dp.message.middleware(AdminMiddleware())
         dp.message.middleware(GradeMiddleware())
 
         dp.include_router(command_router)
         dp.include_router(callback_router)
+        dp.include_router(message_router)
 
         logger.info("Начата работа бота")
         await dp.start_polling(bot)

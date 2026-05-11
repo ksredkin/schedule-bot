@@ -1,16 +1,21 @@
-import os
 from datetime import datetime
 
 import pytz
 from aiogram import Router, types
 from aiogram.exceptions import TelegramNetworkError
 from aiogram.filters import Command, CommandStart
+from aiogram.fsm.context import FSMContext
 
-from src.bot.keyboards.inline import create_cancell_inline_keyboard
-from src.bot.messages.common import start_message
+from src.bot.keyboards.inline import (
+    create_cancell_inline_keyboard,
+    create_inline_keyboard,
+)
+from src.bot.messages.common import before_review_message, start_message
+from src.bot.repositories.review_repository import ReviewRepository
 from src.bot.repositories.user_repository import UserRepository
 from src.bot.services.cache_service import cache_service
 from src.bot.services.schedule_service import get_schedule_by_grade
+from src.bot.states.review_states import ReviewCreate
 from src.bot.utils.constants import classes, days_map
 from src.bot.utils.formatters import (
     get_admin_panel_message,
@@ -335,7 +340,9 @@ async def changes(message: types.Message, grade: str) -> None:
     )
 
 
-@command_router.message(Command("admin"), flags={"need_grade": False})
+@command_router.message(
+    Command("admin"), flags={"need_grade": False, "need_admin": True}
+)
 async def admin(message: types.Message) -> None:
     if not message.from_user:
         logger.warning("Получено сообщение без информации о пользователе")
@@ -345,22 +352,40 @@ async def admin(message: types.Message) -> None:
         f"Пользователь @{message.from_user.username} с id {message.from_user.id} вызвал команду /admin"
     )
 
-    admin_id = os.getenv("ADMIN_ID")
-
-    if not admin_id:
-        logger.warning("ADMIN_ID не установлен в переменных окружения")
-        return
-
-    if message.from_user.id != int(admin_id):
-        logger.warning(
-            f"Пользователь @{message.from_user.username} с id {message.from_user.id} не имеет доступа к админ-панели"
-        )
-        return
-
     total_users = await UserRepository().get_total_users()
     user_count_by_grades = await UserRepository().get_user_count_by_grades()
 
-    await message.answer(get_admin_panel_message(total_users, user_count_by_grades))
+    reviews = await ReviewRepository.get_pending_reviews()
+    reviews_count = len(reviews) if reviews else 0
+
+    archived_reviews = await ReviewRepository.get_archived_reviews()
+    archived_reviews_count = len(archived_reviews) if archived_reviews else 0
+
+    buttons = {
+        f"✍️ Активные отзывы ({reviews_count})": "get_pending_reviews",
+        f"🗄 Архив ({archived_reviews_count})": "get_archived_reviews",
+    }
+
+    await message.answer(
+        get_admin_panel_message(total_users, user_count_by_grades),
+        reply_markup=create_inline_keyboard(buttons),
+    )
     logger.info(
         f"Пользователь @{message.from_user.username} с id {message.from_user.id} получил админ-панель"
+    )
+
+
+@command_router.message(Command("review"), flags={"need_grade": False})
+async def review(message: types.Message, state: FSMContext) -> None:
+    if not message.from_user:
+        logger.warning("Получено сообщение без информации о пользователе")
+        return
+
+    logger.info(
+        f"Пользователь @{message.from_user.username} с id {message.from_user.id} вызвал команду /review"
+    )
+
+    await state.set_state(ReviewCreate.waiting_for_review)
+    await message.answer(
+        before_review_message, reply_markup=create_cancell_inline_keyboard({})
     )
