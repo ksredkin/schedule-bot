@@ -101,7 +101,7 @@ async def start_bot(bot: Bot) -> None:
         load_dotenv()
 
         subprocess.run(["alembic", "upgrade", "head"])
-        # await setup_bot(bot)
+        await setup_bot(bot)
 
         dp = Dispatcher()
 
