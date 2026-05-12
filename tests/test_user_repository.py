@@ -25,7 +25,7 @@ async def test_create_user(sessionmaker, mocker):
 
     assert isinstance(user, User)
     assert user.telegram_id == telegram_id
-    assert user.grade == grade
+    assert user.grade == grade.lower()
 
 
 @pytest.mark.asyncio
@@ -43,7 +43,7 @@ async def test_create_existing_user(sessionmaker, mocker):
 
     assert isinstance(user1, User)
     assert user1.telegram_id == telegram_id
-    assert user1.grade == grade
+    assert user1.grade == grade.lower()
     assert user2 is None
 
 
@@ -66,14 +66,14 @@ async def test_get_users(sessionmaker, mocker):
 
     assert isinstance(user1, User)
     assert user1.telegram_id == telegram_id
-    assert user1.grade == grade
+    assert user1.grade == grade.lower()
 
     users2 = await user_repository.get_users()
 
     assert isinstance(users2, list)
     assert len(users2) == 1
     assert users2[0].telegram_id == user1.telegram_id
-    assert users2[0].grade == user1.grade
+    assert users2[0].grade == user1.grade.lower()
     assert users2[0].id == user1.id
 
 
@@ -95,13 +95,13 @@ async def test_get_user_by_telegram_id(sessionmaker, mocker):
 
     assert isinstance(user1, User)
     assert user1.telegram_id == telegram_id
-    assert user1.grade == grade
+    assert user1.grade == grade.lower()
 
     user2 = await user_repository.get_user_by_telegram_id(telegram_id)
 
     assert isinstance(user2, User)
     assert user2.telegram_id == user1.telegram_id
-    assert user2.grade == user1.grade
+    assert user2.grade == user1.grade.lower()
     assert user2.id == user1.id
 
 
@@ -120,7 +120,7 @@ async def test_update_user_grade(sessionmaker, mocker):
 
     assert isinstance(user1, User)
     assert user1.telegram_id == telegram_id
-    assert user1.grade == grade
+    assert user1.grade == grade.lower()
 
     new_grade = "11А"
 
@@ -128,7 +128,7 @@ async def test_update_user_grade(sessionmaker, mocker):
 
     assert isinstance(user2, User)
     assert user2.telegram_id == user1.telegram_id
-    assert user2.grade == new_grade
+    assert user2.grade == new_grade.lower()
     assert user2.id == user1.id
 
 
@@ -168,7 +168,7 @@ async def test_get_total_users(sessionmaker, mocker):
     assert user is not None
     assert isinstance(user, User)
     assert user.telegram_id == telegram_id
-    assert user.grade == user_grade
+    assert user.grade == user_grade.lower()
 
     users = await user_repository.get_total_users()
 
@@ -195,11 +195,11 @@ async def test_get_user_count_by_grades(sessionmaker, mocker):
     assert user is not None
     assert isinstance(user, User)
     assert user.telegram_id == telegram_id
-    assert user.grade == user_grade
+    assert user.grade == user_grade.lower()
 
     users = await user_repository.get_user_count_by_grades()
 
-    assert users == {"11А": 1}
+    assert users == {"11а": 1}
 
     second_telegram_id = 456
 
@@ -207,11 +207,11 @@ async def test_get_user_count_by_grades(sessionmaker, mocker):
 
     users = await user_repository.get_user_count_by_grades()
 
-    assert users == {"11А": 1, "Не указан": 1}
+    assert users == {"11а": 1, "Не указан": 1}
 
 
 @pytest.mark.asyncio
-async def test_get_users_by_class(sessionmaker, mocker):    
+async def test_get_users_by_class(sessionmaker, mocker):
     from src.bot.repositories.user_repository import UserRepository
 
     mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
@@ -230,10 +230,10 @@ async def test_get_users_by_class(sessionmaker, mocker):
     assert user is not None
     assert isinstance(user, User)
     assert user.telegram_id == telegram_id
-    assert user.grade == user_grade
+    assert user.grade == user_grade.lower()
 
     users = await user_repository.get_users_by_class("10A")
     assert isinstance(users, list)
     assert len(users) == 1
     assert users[0].telegram_id == telegram_id
-    assert users[0].grade == user_grade
+    assert users[0].grade == user_grade.lower()

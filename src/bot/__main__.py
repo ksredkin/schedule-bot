@@ -19,9 +19,9 @@ from src.bot.handlers.command import command_router
 from src.bot.handlers.message import message_router
 from src.bot.messages.common import before_start_description, profile_description
 from src.bot.middlewares.admin import AdminMiddleware
+from src.bot.middlewares.album import AlbumMiddleware
 from src.bot.middlewares.grade import GradeMiddleware
 from src.bot.middlewares.throttling import ThrottlingMiddleware
-from src.bot.middlewares.album import AlbumMiddleware
 from src.bot.redis_client.client import r
 from src.bot.services.throttling_service import ThrottlingService
 from src.bot.services.update_changes_cache_service import (

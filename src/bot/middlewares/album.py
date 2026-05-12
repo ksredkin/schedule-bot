@@ -1,8 +1,10 @@
 import asyncio
-from typing import Any, Dict, List, Callable, Awaitable
+from typing import Any, Awaitable, Callable, Dict, List
+
 from aiogram import BaseMiddleware
-from aiogram.types import Message
 from aiogram.dispatcher.flags import get_flag
+from aiogram.types import Message
+
 
 class AlbumMiddleware(BaseMiddleware):
     def __init__(self, latency: float = 0.1):
@@ -27,8 +29,8 @@ class AlbumMiddleware(BaseMiddleware):
             self.album_data[event.media_group_id].append(event)
         except KeyError:
             self.album_data[event.media_group_id] = [event]
-            
+
             await asyncio.sleep(self.latency)
-            
+
             data["album"] = self.album_data.pop(event.media_group_id)
             return await handler(event, data)

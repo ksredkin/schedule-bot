@@ -10,11 +10,11 @@ from src.bot.keyboards.inline import (
 from src.bot.repositories.review_repository import ReviewRepository
 from src.bot.repositories.user_repository import UserRepository
 from src.bot.services.cache_service import cache_service
-from src.bot.states.review_states import ReviewReply
 from src.bot.states.broadcast_states import BroadcastAll, BroadcastClass
+from src.bot.states.review_states import ReviewReply
+from src.bot.utils.constants import classes
 from src.bot.utils.formatters import get_admin_panel_message
 from src.bot.utils.logger import Logger
-from src.bot.utils.constants import classes
 
 callback_router = Router()
 logger = Logger(__name__).get_logger()
@@ -405,7 +405,8 @@ async def delete_archived_review(callback: types.CallbackQuery) -> None:
     logger.info(
         f"Пользователь @{callback.from_user.username} с id {callback.from_user.id} удалил отзыв с id {review_id} из архива"
     )
-    
+
+
 @callback_router.callback_query(F.data == "broadcast_all", flags={"need_admin": True})
 async def broadcast_all(callback: types.CallbackQuery, state: FSMContext) -> None:
     if (
@@ -450,8 +451,12 @@ async def broadcast_class(callback: types.CallbackQuery, state: FSMContext) -> N
     )
 
 
-@callback_router.callback_query(F.data.startswith("select_broadcast_class:"), flags={"need_admin": True})
-async def select_broadcast_class(callback: types.CallbackQuery, state: FSMContext) -> None:
+@callback_router.callback_query(
+    F.data.startswith("select_broadcast_class:"), flags={"need_admin": True}
+)
+async def select_broadcast_class(
+    callback: types.CallbackQuery, state: FSMContext
+) -> None:
     if (
         not callback.from_user
         or not callback.message

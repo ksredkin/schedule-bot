@@ -15,7 +15,7 @@ class UserRepositoryInterface:
         pass
 
     @staticmethod
-    async def get_user_count_by_grades() -> dict[str, int | None]:
+    async def get_user_count_by_grades() -> dict[str, int | None] | None:
         pass
 
     @staticmethod
