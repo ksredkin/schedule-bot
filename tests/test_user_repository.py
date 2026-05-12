@@ -208,3 +208,32 @@ async def test_get_user_count_by_grades(sessionmaker, mocker):
     users = await user_repository.get_user_count_by_grades()
 
     assert users == {"11А": 1, "Не указан": 1}
+
+
+@pytest.mark.asyncio
+async def test_get_users_by_class(sessionmaker, mocker):    
+    from src.bot.repositories.user_repository import UserRepository
+
+    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
+
+    user_repository = UserRepository()
+
+    no_users = await user_repository.get_users_by_class("10A")
+
+    assert no_users == []
+
+    telegram_id = 123
+    user_grade = "10A"
+
+    user = await user_repository.create_user(telegram_id, user_grade)
+
+    assert user is not None
+    assert isinstance(user, User)
+    assert user.telegram_id == telegram_id
+    assert user.grade == user_grade
+
+    users = await user_repository.get_users_by_class("10A")
+    assert isinstance(users, list)
+    assert len(users) == 1
+    assert users[0].telegram_id == telegram_id
+    assert users[0].grade == user_grade

@@ -21,6 +21,19 @@ class UserRepository(UserRepositoryInterface):
                     f"Произошла ошибка при попытке получить всех пользователей из бд: {e}"
                 )
                 return None
+            
+    @staticmethod
+    async def get_users_by_class(grade: str) -> list[User] | None:
+        async with session() as conn:
+            try:
+                result = await conn.execute(select(User).filter(User.grade == grade))
+                users = list(result.scalars().all())
+                return users
+            except Exception as e:
+                logger.critical(
+                    f"Произошла ошибка при попытке получить пользователей по классу {grade} из бд: {e}"
+                )
+                return None
 
     @staticmethod
     async def get_total_users() -> int | None:
@@ -71,7 +84,7 @@ class UserRepository(UserRepositoryInterface):
     async def create_user(telegram_id: int, grade: str | None) -> User | None:
         async with session() as conn:
             try:
-                user = User(telegram_id=telegram_id, grade=grade)
+                user = User(telegram_id=telegram_id, grade=grade.lower() if grade else None)
                 conn.add(user)
 
                 await conn.commit()
@@ -96,7 +109,7 @@ class UserRepository(UserRepositoryInterface):
                 if not user:
                     return None
 
-                user.grade = grade  # type: ignore
+                user.grade = grade.lower() if grade else None  # type: ignore
 
                 await conn.commit()
                 await conn.refresh(user)
