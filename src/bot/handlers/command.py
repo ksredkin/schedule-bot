@@ -113,7 +113,7 @@ async def start(message: types.Message) -> None:
     Command("schedule"), flags={"need_grade": True, "cmd": "schedule"}
 )
 async def schedule(message: types.Message, grade: str) -> None:
-    if not message.from_user:
+    if not message.from_user or not grade:
         logger.warning("Получено сообщение без информации о пользователе")
         return
 
@@ -134,7 +134,7 @@ async def schedule(message: types.Message, grade: str) -> None:
     Command("schedule_today"), flags={"need_grade": True, "cmd": "schedule_today"}
 )
 async def schedule_today(message: types.Message, grade: str) -> None:
-    if not message.from_user:
+    if not message.from_user or not grade:
         logger.warning("Получено сообщение без информации о пользователе")
         return
 
@@ -168,7 +168,7 @@ async def schedule_today(message: types.Message, grade: str) -> None:
     Command("schedule_tomorrow"), flags={"need_grade": True, "cmd": "schedule_tomorrow"}
 )
 async def schedule_tomorrow(message: types.Message, grade: str) -> None:
-    if not message.from_user:
+    if not message.from_user or not grade:
         logger.warning("Получено сообщение без информации о пользователе")
         return
 
@@ -202,7 +202,7 @@ async def schedule_tomorrow(message: types.Message, grade: str) -> None:
 
 @command_router.message(Command("lesson"), flags={"need_grade": True, "cmd": "lesson"})
 async def lesson(message: types.Message, grade: str) -> None:
-    if not message.from_user:
+    if not message.from_user or not grade:
         logger.warning("Получено сообщение без информации о пользователе")
         return
 
@@ -251,7 +251,7 @@ async def lesson(message: types.Message, grade: str) -> None:
 
 @command_router.message(Command("bell"), flags={"need_grade": True, "cmd": "bell"})
 async def bell(message: types.Message, grade: str) -> None:
-    if not message.from_user:
+    if not message.from_user or not grade:
         logger.warning("Получено сообщение без информации о пользователе")
         return
 
@@ -304,7 +304,7 @@ async def set_my_class(message: types.Message) -> None:
     Command("changes"), flags={"need_grade": True, "cmd": "changes"}
 )
 async def changes(message: types.Message, grade: str) -> None:
-    if not message.from_user:
+    if not message.from_user or not grade:
         logger.warning("Получено сообщение без информации о пользователе")
         return
 
@@ -362,8 +362,10 @@ async def admin(message: types.Message) -> None:
     archived_reviews_count = len(archived_reviews) if archived_reviews else 0
 
     buttons = {
-        f"✍️ Активные отзывы ({reviews_count})": "get_pending_reviews",
-        f"🗄 Архив ({archived_reviews_count})": "get_archived_reviews",
+        f"🔔 Активные отзывы ({reviews_count})": "get_pending_reviews",
+        f"🗄 Архивные отзывы ({archived_reviews_count})": "get_archived_reviews",
+        "📢 Рассылка всем": "broadcast_all",
+        "📋 Рассылка классу": "broadcast_class",
     }
 
     await message.answer(

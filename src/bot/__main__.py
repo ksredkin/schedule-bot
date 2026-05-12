@@ -21,6 +21,7 @@ from src.bot.messages.common import before_start_description, profile_descriptio
 from src.bot.middlewares.admin import AdminMiddleware
 from src.bot.middlewares.grade import GradeMiddleware
 from src.bot.middlewares.throttling import ThrottlingMiddleware
+from src.bot.middlewares.album import AlbumMiddleware
 from src.bot.redis_client.client import r
 from src.bot.services.throttling_service import ThrottlingService
 from src.bot.services.update_changes_cache_service import (
@@ -101,7 +102,7 @@ async def start_bot(bot: Bot) -> None:
         load_dotenv()
 
         subprocess.run(["alembic", "upgrade", "head"])
-        # await setup_bot(bot)
+        await setup_bot(bot)
 
         dp = Dispatcher()
 
@@ -110,6 +111,7 @@ async def start_bot(bot: Bot) -> None:
 
         dp.message.middleware(AdminMiddleware())
         dp.message.middleware(GradeMiddleware())
+        dp.message.middleware(AlbumMiddleware())
 
         dp.include_router(command_router)
         dp.include_router(callback_router)

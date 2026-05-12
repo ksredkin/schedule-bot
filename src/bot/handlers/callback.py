@@ -11,8 +11,10 @@ from src.bot.repositories.review_repository import ReviewRepository
 from src.bot.repositories.user_repository import UserRepository
 from src.bot.services.cache_service import cache_service
 from src.bot.states.review_states import ReviewReply
+from src.bot.states.broadcast_states import BroadcastAll, BroadcastClass
 from src.bot.utils.formatters import get_admin_panel_message
 from src.bot.utils.logger import Logger
+from src.bot.utils.constants import classes
 
 callback_router = Router()
 logger = Logger(__name__).get_logger()
@@ -78,8 +80,10 @@ async def get_admin_panel(callback: types.CallbackQuery) -> None:
     archived_reviews_count = len(archived_reviews) if archived_reviews else 0
 
     buttons = {
-        f"✍️ Активные отзывы ({reviews_count})": "get_pending_reviews",
-        f"🗄 Архив ({archived_reviews_count})": "get_archived_reviews",
+        f"🔔 Активные отзывы ({reviews_count})": "get_pending_reviews",
+        f"🗄 Архивные отзывы ({archived_reviews_count})": "get_archived_reviews",
+        "📢 Рассылка всем": "broadcast_all",
+        "📋 Рассылка классу": "broadcast_class",
     }
 
     await callback.message.edit_text(
@@ -400,4 +404,72 @@ async def delete_archived_review(callback: types.CallbackQuery) -> None:
     )
     logger.info(
         f"Пользователь @{callback.from_user.username} с id {callback.from_user.id} удалил отзыв с id {review_id} из архива"
+    )
+    
+@callback_router.callback_query(F.data == "broadcast_all", flags={"need_admin": True})
+async def broadcast_all(callback: types.CallbackQuery, state: FSMContext) -> None:
+    if (
+        not callback.from_user
+        or not callback.message
+        or not hasattr(callback.message, "edit_text")
+        or not callback.data
+    ):
+        logger.warning("Получен некорректный callback")
+        return
+
+    await callback.message.edit_text(
+        "✍️ Напишите текст рассылки для всех пользователей:",
+        reply_markup=create_cancell_inline_keyboard({}),
+    )
+    await state.set_state(BroadcastAll.waiting_for_message)
+    logger.info(
+        f"Пользователь @{callback.from_user.username} с id {callback.from_user.id} начал создавать рассылку для всех пользователей"
+    )
+
+
+@callback_router.callback_query(F.data == "broadcast_class", flags={"need_admin": True})
+async def broadcast_class(callback: types.CallbackQuery, state: FSMContext) -> None:
+    if (
+        not callback.from_user
+        or not callback.message
+        or not hasattr(callback.message, "edit_text")
+        or not callback.data
+    ):
+        logger.warning("Получен некорректный callback")
+        return
+
+    buttons = {grade: "select_broadcast_class:" + grade.lower() for grade in classes}
+
+    await callback.message.edit_text(
+        "📃 Выберите класс:",
+        reply_markup=create_cancell_inline_keyboard(buttons),
+    )
+    await state.set_state(BroadcastClass.waiting_for_class)
+    logger.info(
+        f"Пользователь @{callback.from_user.username} с id {callback.from_user.id} начал создавать рассылку для класса"
+    )
+
+
+@callback_router.callback_query(F.data.startswith("select_broadcast_class:"), flags={"need_admin": True})
+async def select_broadcast_class(callback: types.CallbackQuery, state: FSMContext) -> None:
+    if (
+        not callback.from_user
+        or not callback.message
+        or not hasattr(callback.message, "edit_text")
+        or not callback.data
+    ):
+        logger.warning("Получен некорректный callback")
+        return
+
+    selected_class = callback.data.split(":")[1]
+
+    await state.update_data(selected_class=selected_class)
+
+    await callback.message.edit_text(
+        f"✍️ Напишите текст рассылки для класса {selected_class}:",
+        reply_markup=create_cancell_inline_keyboard({}),
+    )
+    await state.set_state(BroadcastClass.waiting_for_message)
+    logger.info(
+        f"Пользователь @{callback.from_user.username} с id {callback.from_user.id} выбрал класс {selected_class} для рассылки"
     )

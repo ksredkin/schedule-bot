@@ -79,6 +79,8 @@ class CacheService:
     async def get_schedule_from_cache(
         self, grade: str
     ) -> dict[str, dict[str, dict[str, str | None]]] | None:
+        if not grade:
+            return None
         schedule = await self.get("schedule", grade.upper())
         if schedule is None:
             return None

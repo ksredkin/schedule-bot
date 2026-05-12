@@ -19,6 +19,9 @@ class ThrottlingMiddleware(BaseMiddleware):
     ) -> Any:
         if not event.from_user:
             return
+        
+        if event.media_group_id:
+            return await handler(event, data)
 
         if await self.service.is_spaming(event.from_user.id):
             await event.reply(

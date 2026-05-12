@@ -53,4 +53,3 @@ jobs:
             cd ~/schedule-bot
             git pull origin master
             docker compose up -d --build
-            docker compose exec -T schedule-bot alembic -c src/bot/alembic.ini upgrade head
