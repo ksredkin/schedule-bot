@@ -149,6 +149,22 @@ async def test_update_invalid_user_grade(sessionmaker, mocker):
 
 
 @pytest.mark.asyncio
+async def test_create_user_without_grade(sessionmaker, mocker):
+    from src.bot.repositories.user_repository import UserRepository
+
+    mocker.patch("src.bot.repositories.user_repository.session", sessionmaker)
+
+    user_repository = UserRepository()
+    telegram_id = 999
+
+    user = await user_repository.create_user(telegram_id, None)
+
+    assert isinstance(user, User)
+    assert user.telegram_id == telegram_id
+    assert user.grade is None
+
+
+@pytest.mark.asyncio
 async def test_get_total_users(sessionmaker, mocker):
     from src.bot.repositories.user_repository import UserRepository
 

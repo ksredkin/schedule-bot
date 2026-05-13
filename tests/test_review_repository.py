@@ -119,6 +119,49 @@ async def test_delete_review_by_id(sessionmaker, mocker):
 
 
 @pytest.mark.asyncio
+async def test_create_review_empty_text(sessionmaker, mocker):
+    from src.bot.repositories.review_repository import ReviewRepository
+
+    mocker.patch("src.bot.repositories.review_repository.session", sessionmaker)
+
+    review_repository = ReviewRepository()
+    telegram_id = 123456789
+    text = ""
+
+    review = await review_repository.create(telegram_id, text)
+
+    assert isinstance(review, Review)
+    assert review.text == ""
+
+
+@pytest.mark.asyncio
+async def test_update_non_existent_review(sessionmaker, mocker):
+    from src.bot.repositories.review_repository import ReviewRepository
+
+    mocker.patch("src.bot.repositories.review_repository.session", sessionmaker)
+
+    review_repository = ReviewRepository()
+
+    result = await review_repository.update_status(9999, "approved")
+
+    assert result is None or result is False
+
+
+@pytest.mark.asyncio
+async def test_get_count_by_user_today_empty(sessionmaker, mocker):
+    from src.bot.repositories.review_repository import ReviewRepository
+
+    mocker.patch("src.bot.repositories.review_repository.session", sessionmaker)
+
+    review_repository = ReviewRepository()
+
+    count = await review_repository.get_count_by_user_today(999)
+
+    assert isinstance(count, int)
+    assert count == 0
+
+
+@pytest.mark.asyncio
 async def test_get_all_reviews(sessionmaker, mocker):
     from src.bot.repositories.review_repository import ReviewRepository
 
