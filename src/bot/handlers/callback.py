@@ -348,7 +348,9 @@ async def select_archived_review(callback: types.CallbackQuery) -> None:
         "🗑 Удалить": f"delete_archived_review:{review.id}",
         "🔙 Назад": "get_archived_reviews",
     }
-    await callback.message.edit_text(text, reply_markup=create_inline_keyboard(buttons))
+    await callback.message.edit_text(
+        text, reply_markup=create_inline_keyboard(buttons, [2, 1])
+    )
     logger.info(
         f"Пользователь @{callback.from_user.username} с id {callback.from_user.id} выбрал архивный отзыв с id {selected_review_id}"
     )
