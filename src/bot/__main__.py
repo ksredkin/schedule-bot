@@ -1,7 +1,5 @@
 import asyncio
 import os
-import subprocess
-import sys
 
 import sentry_sdk
 from aiogram import Bot, Dispatcher, types
@@ -9,7 +7,6 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.types import BotCommand
 from aiohttp_socks._errors import ProxyTimeoutError
-from dotenv import load_dotenv
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from singbox2proxy import SingBoxProxy
 
@@ -62,106 +59,83 @@ def init_sentry() -> None:
 async def setup_bot(bot: Bot) -> None:
     logger.info("Начата настройка бота")
 
-    try:
-        await bot.set_my_name("Расписание")
-        logger.info("Имя бота обновлено")
-    except Exception as e:
-        logger.warning(f"Не удалось настроить имя бота: {e}")
+    photo = types.InputProfilePhotoStatic(photo=types.FSInputFile(BOT_PHOTO_PATH))
 
-    try:
-        await bot.set_my_description(before_start_description)
-        logger.info("Описание бота до start обновлено")
-    except Exception as e:
-        logger.warning(f"Не удалось настроить описание до start бота: {e}")
+    results = await asyncio.gather(
+        bot.set_my_name("Расписание"),
+        bot.set_my_description(before_start_description),
+        bot.set_my_short_description(profile_description),
+        bot.set_my_commands(bot_commands),
+        bot.set_my_profile_photo(photo=photo),
+        return_exceptions=True,
+    )
 
-    try:
-        await bot.set_my_short_description(profile_description)
-        logger.info("Описание бота обновлено")
-    except Exception as e:
-        logger.warning(f"Не удалось настроить описание бота: {e}")
-
-    try:
-        await bot.set_my_commands(bot_commands)
-        logger.info("Команды бота обновлены")
-    except Exception as e:
-        logger.warning(f"Не удалось настроить команды бота: {e}")
-
-    try:
-        photo = types.InputProfilePhotoStatic(photo=types.FSInputFile(BOT_PHOTO_PATH))
-        await bot.set_my_profile_photo(photo=photo)
-        logger.info("Фото бота обновлено")
-    except Exception as e:
-        logger.warning(f"Не удалось настроить фото бота: {e}")
+    for result in results:
+        if isinstance(result, Exception):
+            logger.warning(result)
 
     logger.info("Настройка бота завершена")
 
 
 async def start_bot(bot: Bot) -> None:
-    try:
-        logger.info("Бот запущен")
-        load_dotenv()
+    logger.info("Бот запущен")
+    dp = Dispatcher()
 
-        subprocess.run(["alembic", "upgrade", "head"])
-        await setup_bot(bot)
+    dp.message.middleware(ThrottlingMiddleware(ThrottlingService(r)))
+    dp.message.middleware(AdminMiddleware())
+    dp.message.middleware(GradeMiddleware())
+    dp.message.middleware(AlbumMiddleware())
 
-        dp = Dispatcher()
+    dp.include_router(command_router)
+    dp.include_router(callback_router)
+    dp.include_router(message_router)
 
-        throttling_service = ThrottlingService(r)
-        dp.message.middleware(ThrottlingMiddleware(throttling_service))
-
-        dp.message.middleware(AdminMiddleware())
-        dp.message.middleware(GradeMiddleware())
-        dp.message.middleware(AlbumMiddleware())
-
-        dp.include_router(command_router)
-        dp.include_router(callback_router)
-        dp.include_router(message_router)
-
-        logger.info("Начата работа бота")
-        await dp.start_polling(bot)
-
-    except Exception as e:
-        logger.critical(f"Работа бота остановлена: {e}")
-        sys.exit(1)
+    logger.info("Начата работа бота")
+    await dp.start_polling(bot)
 
 
 async def main() -> None:
     init_sentry()
+    bot = None
+    sing_box = None
     try:
         token = os.getenv("TOKEN")
-        if not isinstance(token, str):
-            logger.critical("Не найден токен бота в переменных окружения.")
-            sys.exit(1)
+        if not token:
+            raise ValueError("Не найден токен бота в переменных окружения.")
 
-        if os.getenv("PROXY"):
-            logger.info("Запуск с ипользованием proxy")
-            session = AiohttpSession(proxy=os.getenv("PROXY"))
-            bot = Bot(token, session, DefaultBotProperties(parse_mode="html"))
+        proxy = os.getenv("PROXY")
+        vless_proxy = os.getenv("VLESS_PROXY")
 
-        elif os.getenv("VLESS_PROXY"):
-            logger.info("Запуск с ипользованием VLESS proxy")
-            proxy = SingBoxProxy(os.getenv("VLESS_PROXY"))
+        if proxy:
+            logger.info("Запуск с иcпользованием proxy")
+            session = AiohttpSession(proxy=proxy)
 
-            if not proxy.running:
-                proxy.start()
+        elif vless_proxy:
+            logger.info("Запуск с иcпользованием VLESS proxy")
+            sing_box = SingBoxProxy(vless_proxy)
 
-            session = AiohttpSession(proxy=proxy.socks5_proxy_url)
-            bot = Bot(token, session, DefaultBotProperties(parse_mode="html"))
+            if not sing_box.running:
+                sing_box.start()
+
+            session = AiohttpSession(proxy=sing_box.socks5_proxy_url)
 
         else:
             logger.info("Запуск без proxy")
-            bot = Bot(token, default=DefaultBotProperties(parse_mode="html"))
+            session = None
 
-        bot_service = asyncio.create_task(start_bot(bot))
-        update_changes_cache_service = asyncio.create_task(
-            start_update_changes_cache_service(bot)
-        )
-        await bot_service
-        await update_changes_cache_service
+        bot = Bot(token, session, default=DefaultBotProperties(parse_mode="html"))
+        await setup_bot(bot)
+        await asyncio.gather(start_bot(bot), start_update_changes_cache_service(bot))
 
     except ProxyTimeoutError:
-        logger.critical("Не удалось подключиться к proxy.")
-        sys.exit(1)
+        logger.error("Не удалось подключиться к proxy.")
+        raise
+
+    finally:
+        if sing_box and sing_box.running:
+            sing_box.stop()
+        if bot:
+            await bot.session.close()
 
 
 if __name__ == "__main__":

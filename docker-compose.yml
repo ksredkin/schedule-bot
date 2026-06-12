@@ -21,6 +21,7 @@ services:
     depends_on:
       - schedule-postgres
       - schedule-redis
+      - schedule-migrations
     environment:
       DB_HOST: schedule-postgres
       DB_PORT: ${DB_PORT}
@@ -34,13 +35,6 @@ services:
       REDIS_PORT: 6379
       ADMIN_ID: ${ADMIN_ID}
       SENTRY_DSN: ${SENTRY_DSN}
-    healthcheck:
-      test: ["CMD-SHELL", "pgrep python || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    volumes:
-      - ./src:/app/src
     networks:
       - schedule-postgres-net
       - schedule-redis-net
@@ -51,6 +45,23 @@ services:
     restart: unless-stopped
     networks:
       - schedule-redis-net
+
+  schedule-migrations:
+    container_name: schedule-migrations
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    environment:
+      DB_HOST: schedule-postgres
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    command: poetry run alembic upgrade head
+    depends_on:
+      - schedule-postgres
+    networks:
+      - schedule-postgres-net
 
 networks:
   schedule-postgres-net:
