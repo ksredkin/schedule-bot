@@ -43,8 +43,6 @@ def get_current_lesson(
 def get_time_to_bell(
     schedule: dict[str, dict[str, dict[str, str | None]]], now: datetime
 ) -> tuple[None, None] | tuple[timedelta, dict[str, str | None]]:
-    print(type(schedule))
-    print(type(now))
     if not isinstance(schedule, dict) or not isinstance(now, datetime):
         return None, None
 
