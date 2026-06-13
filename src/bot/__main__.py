@@ -85,7 +85,11 @@ async def start_bot(bot: Bot) -> None:
 
     dp.message.middleware(ThrottlingMiddleware(ThrottlingService(r)))
     dp.message.middleware(AdminMiddleware())
-    dp.message.middleware(DatabaseSessionMiddleware(sessionmaker))
+
+    database_session_middleware = DatabaseSessionMiddleware(sessionmaker)
+    dp.message.middleware(database_session_middleware)
+    dp.callback_query.middleware(database_session_middleware)
+
     dp.message.middleware(GradeMiddleware())
     dp.message.middleware(AlbumMiddleware())
 

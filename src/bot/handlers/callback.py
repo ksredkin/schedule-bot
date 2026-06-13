@@ -521,7 +521,7 @@ async def select_broadcast_class(
 
     selected_class = callback.data.split(":")[1]
 
-    await state.update_data(selected_class=selected_class)
+    await state.update_data(grade=selected_class)
 
     await callback.message.edit_text(
         f"✍️ Напишите текст рассылки для класса {selected_class}:",

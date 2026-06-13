@@ -233,9 +233,9 @@ async def handle_broadcast_class_message(
         logger.warning("Получено сообщение без информации о пользователе")
         return
 
-    await state.clear()
     data = await state.get_data()
     grade = data.get("grade")
+    await state.clear()
 
     media_group: list[InputMediaPhoto | InputMediaVideo] = []
     text = ""
