@@ -48,7 +48,7 @@ jobs:
           username: ${{ secrets.USER }}
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
-          command_timeout: 30m
+          command_timeout: 60m
           script: |
             cd ~/schedule-bot
             git pull origin master
