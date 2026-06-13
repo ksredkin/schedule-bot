@@ -2,6 +2,7 @@ import html
 
 from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.bot.keyboards.inline import (
     create_cancell_inline_keyboard,
@@ -20,8 +21,12 @@ callback_router = Router()
 logger = Logger(__name__).get_logger()
 
 
-@callback_router.callback_query(F.data.startswith("set_my_class:"))
-async def process_class(callback: types.CallbackQuery) -> None:
+@callback_router.callback_query(
+    F.data.startswith("set_my_class:"), flags={"need_db_session": True}
+)
+async def process_class(
+    callback: types.CallbackQuery, db_session: AsyncSession
+) -> None:
     callback_data = callback.data
 
     if not callback_data or not callback_data.startswith("set_my_class:"):
@@ -29,12 +34,14 @@ async def process_class(callback: types.CallbackQuery) -> None:
 
     grade = callback_data.split(":")[1].lower()
 
-    user = await UserRepository.get_user_by_telegram_id(callback.from_user.id)
+    user_repository = UserRepository(db_session)
+
+    user = await user_repository.get_user_by_telegram_id(callback.from_user.id)
 
     if not user:
-        await UserRepository.create_user(callback.from_user.id, grade)
+        await user_repository.create_user(callback.from_user.id, grade)
     else:
-        await UserRepository.update_user_grade(callback.from_user.id, grade)
+        await user_repository.update_user_grade(callback.from_user.id, grade)
 
     await cache_service.set_user_class_in_cache(callback.from_user.id, grade)
 
@@ -57,7 +64,9 @@ async def cancell(callback: types.CallbackQuery) -> None:
 
 
 @callback_router.callback_query(F.data == "get_admin_panel", flags={"need_admin": True})
-async def get_admin_panel(callback: types.CallbackQuery) -> None:
+async def get_admin_panel(
+    callback: types.CallbackQuery, db_session: AsyncSession
+) -> None:
     if (
         not callback.from_user
         or not callback.message
@@ -71,12 +80,15 @@ async def get_admin_panel(callback: types.CallbackQuery) -> None:
         f"Пользователь @{callback.from_user.username} с id {callback.from_user.id} вызвал команду /admin"
     )
 
-    total_users = await UserRepository().get_total_users()
-    user_count_by_grades = await UserRepository().get_user_count_by_grades()
+    user_repository = UserRepository(db_session)
+    review_repository = ReviewRepository(db_session)
 
-    reviews = await ReviewRepository.get_pending_reviews()
+    total_users = await user_repository.get_total_users()
+    user_count_by_grades = await user_repository.get_user_count_by_grades()
+
+    reviews = await review_repository.get_pending_reviews()
     reviews_count = len(reviews) if reviews else 0
-    archived_reviews = await ReviewRepository.get_archived_reviews()
+    archived_reviews = await review_repository.get_archived_reviews()
     archived_reviews_count = len(archived_reviews) if archived_reviews else 0
 
     buttons = {
@@ -98,7 +110,9 @@ async def get_admin_panel(callback: types.CallbackQuery) -> None:
 @callback_router.callback_query(
     F.data == "get_pending_reviews", flags={"need_admin": True}
 )
-async def get_pending_reviews(callback: types.CallbackQuery) -> None:
+async def get_pending_reviews(
+    callback: types.CallbackQuery, db_session: AsyncSession
+) -> None:
     if (
         not callback.from_user
         or not callback.message
@@ -108,7 +122,9 @@ async def get_pending_reviews(callback: types.CallbackQuery) -> None:
         logger.warning("Получен некорректный callback")
         return
 
-    pending_reviews = await ReviewRepository().get_pending_reviews()
+    review_repository = ReviewRepository(db_session)
+
+    pending_reviews = await review_repository.get_pending_reviews()
 
     if not pending_reviews:
         buttons = {"🔙 Назад": "get_admin_panel"}
@@ -140,9 +156,12 @@ async def get_pending_reviews(callback: types.CallbackQuery) -> None:
 
 
 @callback_router.callback_query(
-    F.data.startswith("select_review"), flags={"need_admin": True}
+    F.data.startswith("select_review"),
+    flags={"need_admin": True},
 )
-async def select_review(callback: types.CallbackQuery) -> None:
+async def select_review(
+    callback: types.CallbackQuery, db_session: AsyncSession
+) -> None:
     if (
         not callback.from_user
         or not callback.message
@@ -154,7 +173,9 @@ async def select_review(callback: types.CallbackQuery) -> None:
 
     selected_review_id = int(callback.data.split(":")[1])
 
-    review = await ReviewRepository().get_by_id(selected_review_id)
+    review_repository = ReviewRepository(db_session)
+
+    review = await review_repository.get_by_id(selected_review_id)
 
     if not review:
         buttons = {"🔙 Назад": "get_pending_reviews"}
@@ -189,9 +210,12 @@ async def select_review(callback: types.CallbackQuery) -> None:
 
 
 @callback_router.callback_query(
-    F.data.startswith("mark_reviewed"), flags={"need_admin": True}
+    F.data.startswith("mark_reviewed"),
+    flags={"need_admin": True},
 )
-async def mark_reviewed(callback: types.CallbackQuery) -> None:
+async def mark_reviewed(
+    callback: types.CallbackQuery, db_session: AsyncSession
+) -> None:
     if (
         not callback.from_user
         or not callback.message
@@ -203,7 +227,9 @@ async def mark_reviewed(callback: types.CallbackQuery) -> None:
 
     review_id = int(callback.data.split(":")[1])
 
-    await ReviewRepository().update_status(review_id, "reviewed")
+    review_repository = ReviewRepository(db_session)
+
+    await review_repository.update_status(review_id, "reviewed")
 
     buttons = {"🔙 К списку": "get_pending_reviews"}
     await callback.message.edit_text(
@@ -216,9 +242,12 @@ async def mark_reviewed(callback: types.CallbackQuery) -> None:
 
 
 @callback_router.callback_query(
-    F.data.startswith("delete_review"), flags={"need_admin": True}
+    F.data.startswith("delete_review"),
+    flags={"need_admin": True},
 )
-async def delete_review(callback: types.CallbackQuery) -> None:
+async def delete_review(
+    callback: types.CallbackQuery, db_session: AsyncSession
+) -> None:
     if (
         not callback.from_user
         or not callback.message
@@ -230,7 +259,9 @@ async def delete_review(callback: types.CallbackQuery) -> None:
 
     review_id = int(callback.data.split(":")[1])
 
-    await ReviewRepository().delete_by_id(review_id)
+    review_repository = ReviewRepository(db_session)
+
+    await review_repository.delete_by_id(review_id)
 
     buttons = {"🔙 К списку": "get_pending_reviews"}
     await callback.message.edit_text(
@@ -268,9 +299,12 @@ async def reply_review(callback: types.CallbackQuery, state: FSMContext) -> None
 
 
 @callback_router.callback_query(
-    F.data == "get_archived_reviews", flags={"need_admin": True}
+    F.data == "get_archived_reviews",
+    flags={"need_admin": True},
 )
-async def get_archived_reviews(callback: types.CallbackQuery) -> None:
+async def get_archived_reviews(
+    callback: types.CallbackQuery, db_session: AsyncSession
+) -> None:
     if (
         not callback.from_user
         or not callback.message
@@ -280,7 +314,9 @@ async def get_archived_reviews(callback: types.CallbackQuery) -> None:
         logger.warning("Получен некорректный callback")
         return
 
-    archived_reviews = await ReviewRepository.get_archived_reviews()
+    review_repository = ReviewRepository(db_session)
+
+    archived_reviews = await review_repository.get_archived_reviews()
 
     if not archived_reviews:
         buttons = {"🔙 Назад": "get_admin_panel"}
@@ -310,9 +346,12 @@ async def get_archived_reviews(callback: types.CallbackQuery) -> None:
 
 
 @callback_router.callback_query(
-    F.data.startswith("select_archived_review"), flags={"need_admin": True}
+    F.data.startswith("select_archived_review"),
+    flags={"need_admin": True},
 )
-async def select_archived_review(callback: types.CallbackQuery) -> None:
+async def select_archived_review(
+    callback: types.CallbackQuery, db_session: AsyncSession
+) -> None:
     if (
         not callback.from_user
         or not callback.message
@@ -324,7 +363,9 @@ async def select_archived_review(callback: types.CallbackQuery) -> None:
 
     selected_review_id = int(callback.data.split(":")[1])
 
-    review = await ReviewRepository().get_by_id(selected_review_id)
+    review_repository = ReviewRepository(db_session)
+
+    review = await review_repository.get_by_id(selected_review_id)
 
     if not review:
         buttons = {"🔙 Назад": "get_archived_reviews"}
@@ -357,9 +398,12 @@ async def select_archived_review(callback: types.CallbackQuery) -> None:
 
 
 @callback_router.callback_query(
-    F.data.startswith("restore_archived_review"), flags={"need_admin": True}
+    F.data.startswith("restore_archived_review"),
+    flags={"need_admin": True},
 )
-async def restore_archived_review(callback: types.CallbackQuery) -> None:
+async def restore_archived_review(
+    callback: types.CallbackQuery, db_session: AsyncSession
+) -> None:
     if (
         not callback.from_user
         or not callback.message
@@ -371,7 +415,9 @@ async def restore_archived_review(callback: types.CallbackQuery) -> None:
 
     review_id = int(callback.data.split(":")[1])
 
-    await ReviewRepository().update_status(review_id, "pending")
+    review_repository = ReviewRepository(db_session)
+
+    await review_repository.update_status(review_id, "pending")
 
     buttons = {"🔙 К списку": "get_archived_reviews"}
     await callback.message.edit_text(
@@ -384,9 +430,12 @@ async def restore_archived_review(callback: types.CallbackQuery) -> None:
 
 
 @callback_router.callback_query(
-    F.data.startswith("delete_archived_review"), flags={"need_admin": True}
+    F.data.startswith("delete_archived_review"),
+    flags={"need_admin": True},
 )
-async def delete_archived_review(callback: types.CallbackQuery) -> None:
+async def delete_archived_review(
+    callback: types.CallbackQuery, db_session: AsyncSession
+) -> None:
     if (
         not callback.from_user
         or not callback.message
@@ -398,7 +447,9 @@ async def delete_archived_review(callback: types.CallbackQuery) -> None:
 
     review_id = int(callback.data.split(":")[1])
 
-    await ReviewRepository().delete_by_id(review_id)
+    review_repository = ReviewRepository(db_session)
+
+    await review_repository.delete_by_id(review_id)
 
     buttons = {"🔙 К списку": "get_archived_reviews"}
     await callback.message.edit_text(

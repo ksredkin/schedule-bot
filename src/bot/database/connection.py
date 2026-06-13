@@ -12,4 +12,4 @@ engine: AsyncEngine = create_async_engine(
     pool_timeout=5,
 )
 
-session = async_sessionmaker(bind=engine, expire_on_commit=False)
+sessionmaker = async_sessionmaker(bind=engine, expire_on_commit=False)

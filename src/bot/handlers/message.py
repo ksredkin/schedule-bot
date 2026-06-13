@@ -5,6 +5,7 @@ import os
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InputMediaPhoto, InputMediaVideo, Message
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.bot.core.config import MAX_REVIEWS_PER_USER_PER_DAY
 from src.bot.messages.common import after_review_message, too_many_reviews_message
@@ -18,19 +19,25 @@ message_router = Router()
 logger = Logger(__name__).get_logger()
 
 
-@message_router.message(ReviewCreate.waiting_for_review, F.text)
-async def handle_message(message: Message, state: FSMContext) -> None:
+@message_router.message(
+    ReviewCreate.waiting_for_review, F.text, flags={"need_db_session": True}
+)
+async def handle_message(
+    message: Message, state: FSMContext, db_session: AsyncSession
+) -> None:
     if not message.from_user:
         logger.warning("Получено сообщение без информации о пользователе")
         return
 
-    count = await ReviewRepository.get_count_by_user_today(message.from_user.id)
+    review_repository = ReviewRepository(db_session)
+
+    count = await review_repository.get_count_by_user_today(message.from_user.id)
     if count >= MAX_REVIEWS_PER_USER_PER_DAY:
         await message.answer(too_many_reviews_message)
         await state.clear()
         return
 
-    review = await ReviewRepository.create(
+    review = await review_repository.create(
         telegram_id=message.from_user.id, text=str(message.text)
     )
 
@@ -51,9 +58,13 @@ async def handle_message(message: Message, state: FSMContext) -> None:
 
 
 @message_router.message(
-    F.text, ReviewReply.waiting_for_reply_text, flags={"need_admin": True}
+    F.text,
+    ReviewReply.waiting_for_reply_text,
+    flags={"need_admin": True},
 )
-async def handle_reply_message(message: Message, state: FSMContext) -> None:
+async def handle_reply_message(
+    message: Message, state: FSMContext, db_session: AsyncSession
+) -> None:
     if not message.from_user:
         logger.warning("Получено сообщение без информации о пользователе")
         return
@@ -69,7 +80,9 @@ async def handle_reply_message(message: Message, state: FSMContext) -> None:
         await state.clear()
         return
 
-    review = await ReviewRepository.get_by_id(review_id)
+    review_repository = ReviewRepository(db_session)
+    review = await review_repository.get_by_id(review_id)
+
     if not review:
         logger.error(f"Отзыв с id {review_id} не найден")
         await message.answer("Извините, отзыв не найден. Пожалуйста, попробуйте позже.")
@@ -104,10 +117,14 @@ async def handle_reply_message(message: Message, state: FSMContext) -> None:
 
 
 @message_router.message(
-    BroadcastAll.waiting_for_message, flags={"need_admin": True, "need_album": True}
+    BroadcastAll.waiting_for_message,
+    flags={"need_admin": True, "need_album": True},
 )
 async def handle_broadcast_all_message(
-    message: Message, state: FSMContext, album: list[Message] = []
+    message: Message,
+    state: FSMContext,
+    db_session: AsyncSession,
+    album: list[Message] = [],
 ) -> None:
     if not message.from_user:
         logger.warning("Получено сообщение без информации о пользователе")
@@ -141,7 +158,8 @@ async def handle_broadcast_all_message(
                 InputMediaVideo(media=message.video.file_id, caption=text)
             )
 
-    users = await UserRepository.get_users()
+    user_repository = UserRepository(db_session)
+    users = await user_repository.get_users()
     admin_id = os.getenv("ADMIN_ID")
     admin_id = int(admin_id) if admin_id else None  # type: ignore
 
@@ -202,10 +220,14 @@ async def handle_broadcast_all_message(
 
 
 @message_router.message(
-    BroadcastClass.waiting_for_message, flags={"need_admin": True, "need_album": True}
+    BroadcastClass.waiting_for_message,
+    flags={"need_admin": True, "need_album": True},
 )
 async def handle_broadcast_class_message(
-    message: Message, state: FSMContext, album: list[Message] = []
+    message: Message,
+    state: FSMContext,
+    db_session: AsyncSession,
+    album: list[Message] = [],
 ) -> None:
     if not message.from_user:
         logger.warning("Получено сообщение без информации о пользователе")
@@ -248,7 +270,8 @@ async def handle_broadcast_class_message(
         )
         return
 
-    users = await UserRepository.get_users_by_class(grade)
+    user_repository = UserRepository(db_session)
+    users = await user_repository.get_users_by_class(grade)
     admin_id = os.getenv("ADMIN_ID")
     admin_id = int(admin_id) if admin_id else None  # type: ignore
 

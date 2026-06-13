@@ -5,6 +5,7 @@ from aiogram import Router, types
 from aiogram.exceptions import TelegramNetworkError
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.bot.keyboards.inline import (
     create_cancell_inline_keyboard,
@@ -36,7 +37,7 @@ logger = Logger(__name__).get_logger()
 
 
 @command_router.message(CommandStart(), flags={"need_grade": False})
-async def start(message: types.Message) -> None:
+async def start(message: types.Message, db_session: AsyncSession) -> None:
     if not message.from_user:
         logger.warning("Получено сообщение без информации о пользователе")
         return
@@ -51,13 +52,14 @@ async def start(message: types.Message) -> None:
         logger.info(
             f"Класс пользователя @{message.from_user.username} не найден в кэше"
         )
-        user = await UserRepository().get_user_by_telegram_id(message.from_user.id)
+        user_repository = UserRepository(db_session)
+        user = await user_repository.get_user_by_telegram_id(message.from_user.id)
 
         if not user:
             logger.info(
                 f"Пользователь @{message.from_user.username} не найден в базе данных, создается новый пользователь"
             )
-            await UserRepository().create_user(
+            await user_repository.create_user(
                 telegram_id=message.from_user.id, grade=None
             )
             await cache_service.set_user_class_in_cache(message.from_user.id, None)
@@ -341,9 +343,10 @@ async def changes(message: types.Message, grade: str) -> None:
 
 
 @command_router.message(
-    Command("admin"), flags={"need_grade": False, "need_admin": True}
+    Command("admin"),
+    flags={"need_grade": False, "need_admin": True},
 )
-async def admin(message: types.Message) -> None:
+async def admin(message: types.Message, db_session: AsyncSession) -> None:
     if not message.from_user:
         logger.warning("Получено сообщение без информации о пользователе")
         return
@@ -352,13 +355,16 @@ async def admin(message: types.Message) -> None:
         f"Пользователь @{message.from_user.username} с id {message.from_user.id} вызвал команду /admin"
     )
 
-    total_users = await UserRepository().get_total_users()
-    user_count_by_grades = await UserRepository().get_user_count_by_grades()
+    user_repository = UserRepository(db_session)
+    review_repository = ReviewRepository(db_session)
 
-    reviews = await ReviewRepository.get_pending_reviews()
+    total_users = await user_repository.get_total_users()
+    user_count_by_grades = await user_repository.get_user_count_by_grades()
+
+    reviews = await review_repository.get_pending_reviews()
     reviews_count = len(reviews) if reviews else 0
 
-    archived_reviews = await ReviewRepository.get_archived_reviews()
+    archived_reviews = await review_repository.get_archived_reviews()
     archived_reviews_count = len(archived_reviews) if archived_reviews else 0
 
     buttons = {

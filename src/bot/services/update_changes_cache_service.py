@@ -3,6 +3,7 @@ import asyncio
 from aiogram import Bot
 
 from src.bot.core.config import MINUTES_TO_CHECK_CHANGES
+from src.bot.database.connection import sessionmaker
 from src.bot.repositories.user_repository import UserRepository
 from src.bot.services.cache_service import cache_service
 from src.bot.utils.formatters import get_changes_message
@@ -31,91 +32,91 @@ async def start_update_changes_cache_service(bot: Bot) -> None:
         await cache_service.set_changes_url_in_cache(initial_url)
 
     while True:
-        raw_rows = await get_changes_table_rows()
+        async with sessionmaker() as session:
+            raw_rows = await get_changes_table_rows()
 
-        if not raw_rows:
-            logger.warning("Не удалось получить новые данные, пропуск...")
-            await asyncio.sleep(MINUTES_TO_CHECK_CHANGES * 60)
-            continue
-
-        current_parsed_all = parse_changes_table_rows(raw_rows)
-
-        if current_parsed_all is None:
-            logger.warning("Не удалось распарсить новые данные, пропуск...")
-            await asyncio.sleep(MINUTES_TO_CHECK_CHANGES * 60)
-            continue
-
-        old_parsed_all = await cache_service.get_changes_from_cache()
-
-        if current_parsed_all != old_parsed_all:
-            users = await UserRepository.get_users()
-
-            if not users:
-                logger.info("Нет пользователей для рассылки обновлений")
-                await cache_service.set_changes_in_cache(current_parsed_all)
+            if not raw_rows:
+                logger.warning("Не удалось получить новые данные, пропуск...")
                 await asyncio.sleep(MINUTES_TO_CHECK_CHANGES * 60)
                 continue
 
-            changes_table_url = await get_changes_url()
-            if (
-                changes_table_url != await cache_service.get_changes_url_from_cache()
-                and changes_table_url is not None
-            ):
-                await cache_service.set_changes_url_in_cache(changes_table_url)
+            current_parsed_all = parse_changes_table_rows(raw_rows)
 
-            for user in users:
-                grade = user.grade
+            if current_parsed_all is None:
+                logger.warning("Не удалось распарсить новые данные, пропуск...")
+                await asyncio.sleep(MINUTES_TO_CHECK_CHANGES * 60)
+                continue
 
-                if grade is None:
+            old_parsed_all = await cache_service.get_changes_from_cache()
+
+            if current_parsed_all != old_parsed_all:
+                user_repository = UserRepository(session)
+                users = await user_repository.get_users()
+
+                if not users:
+                    logger.info("Нет пользователей для рассылки обновлений")
+                    await cache_service.set_changes_in_cache(current_parsed_all)
+                    await asyncio.sleep(MINUTES_TO_CHECK_CHANGES * 60)
                     continue
 
-                grade = str(grade)  # type: ignore
-                grade = grade.lower().strip()
+                changes_table_url = await get_changes_url()
+                if (
+                    changes_table_url
+                    != await cache_service.get_changes_url_from_cache()
+                    and changes_table_url is not None
+                ):
+                    await cache_service.set_changes_url_in_cache(changes_table_url)
 
-                has_changes_for_user = False
+                for user in users:
+                    if not user.grade:
+                        continue
 
-                for date in current_parsed_all:
-                    new_grade_data = current_parsed_all.get(date, {}).get(grade)
-                    old_grade_data = (old_parsed_all or {}).get(date, {}).get(grade)
+                    grade = str(user.grade).lower().strip()
 
-                    if new_grade_data != old_grade_data:
-                        has_changes_for_user = True
-                        break
+                    has_changes_for_user = False
 
-                if not has_changes_for_user:
-                    continue
+                    for date in current_parsed_all:
+                        new_grade_data = current_parsed_all.get(date, {}).get(grade)
+                        old_grade_data = (old_parsed_all or {}).get(date, {}).get(grade)
 
-                text = "🔄 <b>Обновились замены!</b>\n\n"
+                        if new_grade_data != old_grade_data:
+                            has_changes_for_user = True
+                            break
 
-                changes_message = get_changes_message(
-                    current_parsed_all, grade, changes_table_url
-                )
+                    if not has_changes_for_user:
+                        continue
 
-                if changes_message is None:
-                    logger.warning(
-                        f"Не удалось сформировать сообщение с заменами для пользователя {user.telegram_id} и класса {grade}"
-                    )
-                    continue
+                    text = "🔄 <b>Обновились замены!</b>\n\n"
 
-                text += (
-                    changes_message
-                    if changes_message
-                    else "Ошибка при формировании сообщения с заменами."
-                )
-
-                try:
-                    await bot.send_message(
-                        int(user.telegram_id), text, disable_web_page_preview=True
-                    )
-                    await asyncio.sleep(0.05)
-                except Exception as e:
-                    logger.warning(
-                        f"Ошибка отправки пользователю {user.telegram_id}: {e}"
+                    changes_message = get_changes_message(
+                        current_parsed_all, grade, changes_table_url
                     )
 
-            await cache_service.set_changes_in_cache(current_parsed_all)
-            logger.info("Рассылка обновлений завершена")
-        else:
-            logger.info("Изменений в таблице нет")
+                    if changes_message is None:
+                        logger.warning(
+                            f"Не удалось сформировать сообщение с заменами для пользователя {user.telegram_id} и класса {grade}"
+                        )
+                        continue
 
-        await asyncio.sleep(MINUTES_TO_CHECK_CHANGES * 60)
+                    text += (
+                        changes_message
+                        if changes_message
+                        else "Ошибка при формировании сообщения с заменами."
+                    )
+
+                    try:
+                        await bot.send_message(
+                            int(user.telegram_id), text, disable_web_page_preview=True
+                        )
+                        await asyncio.sleep(0.05)
+                    except Exception as e:
+                        logger.warning(
+                            f"Ошибка отправки пользователю {user.telegram_id}: {e}"
+                        )
+
+                await cache_service.set_changes_in_cache(current_parsed_all)
+                logger.info("Рассылка обновлений завершена")
+            else:
+                logger.info("Изменений в таблице нет")
+
+            await asyncio.sleep(MINUTES_TO_CHECK_CHANGES * 60)

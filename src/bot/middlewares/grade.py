@@ -28,7 +28,12 @@ class GradeMiddleware(BaseMiddleware):
         if not need_grade:
             return await handler(event, data)
 
-        user_repo = UserRepository()
+        db_session = data.get("db_session")
+
+        if not db_session:
+            raise RuntimeError("GradeMiddleware требует db_session")
+
+        user_repo = UserRepository(db_session)
         cmd = get_flag(data, "cmd") or "cmd"
 
         try:
