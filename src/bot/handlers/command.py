@@ -135,76 +135,78 @@ async def schedule(event: MessageCreated, grade: str) -> None:
 
     await event.message.answer(get_schedule_message(rasp))
 
-"""
-@command_router.message(
-    Command("schedule_today"), flags={"need_grade": True, "cmd": "schedule_today"}
+
+@command_router.message_created(
+    Command("schedule_today"), 
+    GradeMiddleware(cmd="schedule_today"),
 )
-async def schedule_today(message: types.Message, grade: str) -> None:
-    if not message.from_user or not grade:
+async def schedule_today(event: MessageCreated, grade: str) -> None:
+    if not event.from_user or not grade:
         logger.warning("Получено сообщение без информации о пользователе")
         return
+
+    logger.info(
+        f"Пользователь {event.from_user.user_id} вызвал команду /schedule_today для класса {grade}"
+    )
 
     now = datetime.now()
     current_day = days_map.get(now.weekday())
 
     if not current_day:
-        await message.answer("🏝️ Сегодня выходной!")
+        await event.message.answer("🏝️ Сегодня выходной!")
         return
-
-    logger.info(
-        f"Пользователь @{message.from_user.username} вызвал команду /schedule_today для класса {grade}"
-    )
 
     rasp = await get_schedule_by_grade(grade)
 
     if not rasp:
-        await message.answer("🚫 Не удалось получить расписание. Попробуйте позже.")
+        await event.message.answer("🚫 Не удалось получить расписание. Попробуйте позже.")
         return
 
     today_schedule = rasp.get(current_day)
 
     if not today_schedule:
-        await message.answer("🏝️ Сегодня выходной!")
+        await event.message.answer("🏝️ Сегодня выходной!")
         return
 
-    await message.answer(get_schedule_today_message(today_schedule, current_day))
+    await event.message.answer(get_schedule_today_message(today_schedule, current_day))
 
 
-@command_router.message(
-    Command("schedule_tomorrow"), flags={"need_grade": True, "cmd": "schedule_tomorrow"}
+@command_router.message_created(
+    Command("schedule_tomorrow"), 
+    GradeMiddleware(cmd="schedule_tomorrow"),
 )
-async def schedule_tomorrow(message: types.Message, grade: str) -> None:
-    if not message.from_user or not grade:
+async def schedule_tomorrow(event: MessageCreated, grade: str) -> None:
+    if not event.from_user or not grade:
         logger.warning("Получено сообщение без информации о пользователе")
         return
+
+    logger.info(
+        f"Пользователь {event.from_user.user_id} вызвал команду /schedule_tomorrow для класса {grade}"
+    )
 
     now = datetime.now()
     day_tomorrow = days_map.get(now.weekday() + 1 if now.weekday() + 1 != 7 else 0)
 
     if not day_tomorrow:
-        await message.answer("🏝️ Завтра выходной!")
+        await event.message.answer("🏝️ Завтра выходной!")
         return
-
-    logger.info(
-        f"Пользователь @{message.from_user.username} вызвал команду /schedule_tomorrow для класса {grade}"
-    )
 
     rasp = await get_schedule_by_grade(grade)
 
     if not rasp:
-        await message.answer("🚫 Не удалось получить расписание. Попробуйте позже.")
+        await event.message.answer("🚫 Не удалось получить расписание. Попробуйте позже.")
         return
 
     tomorrow_schedule = rasp.get(day_tomorrow)
 
     if not tomorrow_schedule:
-        await message.answer("🏝️ Завтра выходной!")
+        await event.message.answer("🏝️ Завтра выходной!")
         return
 
-    await message.answer(
+    await event.message.answer(
         get_schedule_tomorrow_message(tomorrow_schedule, day_tomorrow.lower())
     )
-
+"""
 
 @command_router.message(Command("lesson"), flags={"need_grade": True, "cmd": "lesson"})
 async def lesson(message: types.Message, grade: str) -> None:
