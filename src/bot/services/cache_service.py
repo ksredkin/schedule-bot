@@ -5,6 +5,7 @@ from redis.asyncio import Redis
 from src.bot.core.config import (
     IMAGE_CACHE_EXPIRATION_SECONDS,
     USER_CLASS_CACHE_EXPIRATION_SECONDS,
+    SCHEDULE_CACHE_EXPIRATION_SECONDS
 )
 from src.bot.redis_client.client import r
 from src.bot.utils.logger import Logger
@@ -106,7 +107,7 @@ class CacheService:
     async def set_schedule_in_cache(
         self, grade: str, schedule: dict[str, dict[str, dict[str, str | None]]]
     ) -> None:
-        await self.set("schedule", grade.upper(), json.dumps(schedule))
+        await self.set("schedule", grade.upper(), json.dumps(schedule), expire=SCHEDULE_CACHE_EXPIRATION_SECONDS)
 
     async def set_changes_url_in_cache(self, url: str) -> None:
         await self.set("url", "changes", url)

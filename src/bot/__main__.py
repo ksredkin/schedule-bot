@@ -20,7 +20,7 @@ from src.bot.messages.common import before_start_description, profile_descriptio
 #from src.bot.middlewares.album import AlbumMiddleware
 from src.bot.middlewares.database import DatabaseSessionMiddleware
 from maxapi.enums.http_method import HTTPMethod
-#from src.bot.middlewares.grade import GradeMiddleware
+from src.bot.middlewares.grade import GradeMiddleware
 #from src.bot.middlewares.throttling import ThrottlingMiddleware
 #from src.bot.redis_client.client import r
 #from src.bot.services.throttling_service import ThrottlingService
@@ -90,7 +90,6 @@ async def start_bot(bot: Bot) -> None:
     dp.register_outer_middleware(database_session_middleware)
     #dp.callback_query.middleware(database_session_middleware)
 
-    #dp.message.middleware(GradeMiddleware())
     #dp.message.middleware(AlbumMiddleware())
 
     dp.include_routers(command_router, callback_router)

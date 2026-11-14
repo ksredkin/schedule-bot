@@ -4,6 +4,7 @@ import pytz
 from maxapi import Router, types
 from maxapi.exceptions import MaxApiError
 from maxapi.types import Command, MessageCreated, InputMedia, AttachmentUpload
+from src.bot.middlewares.grade import GradeMiddleware
 #from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +16,7 @@ from src.bot.messages.common import before_review_message, start_message
 from src.bot.repositories.review_repository import ReviewRepository
 from src.bot.repositories.user_repository import UserRepository
 from src.bot.services.cache_service import cache_service
-#from src.bot.services.schedule_service import get_schedule_by_grade
+from src.bot.services.schedule_service import get_schedule_by_grade
 #from src.bot.states.review_states import ReviewCreate
 from src.bot.utils.constants import classes, days_map
 from src.bot.utils.formatters import (
@@ -31,6 +32,7 @@ from src.bot.utils.formatters import (
 from src.bot.utils.logger import Logger
 from src.bot.utils.parser import get_changes_url
 from src.bot.utils.time_utils import get_current_lesson, get_time_to_bell
+from typing import Any
 
 command_router = Router()
 logger = Logger(__name__).get_logger()
@@ -94,7 +96,7 @@ async def start(event: MessageCreated, db_session: AsyncSession) -> None:
         await cache_service.set_image_token_in_cache("start", sent.message.body.attachments[0].payload.token)
 
 
-@command_router.message_created(Command("set_my_class"), flags={"need_grade": False})
+@command_router.message_created(Command("set_my_class"))
 async def set_my_class(event: MessageCreated) -> None:
     if not event.from_user.user_id:
         logger.warning("Получено сообщение без информации о пользователе")
@@ -111,28 +113,29 @@ async def set_my_class(event: MessageCreated) -> None:
         attachments=[create_cancel_inline_keyboard(buttons, sizes=(2,))],
     )
 
-"""
-@command_router.message(
-    Command("schedule"), flags={"need_grade": True, "cmd": "schedule"}
+
+@command_router.message_created(
+    Command("schedule"),
+    GradeMiddleware(cmd="schedule"),
 )
-async def schedule(message: types.Message, grade: str) -> None:
-    if not message.from_user or not grade:
+async def schedule(event: MessageCreated, grade: str) -> None:
+    if not event.from_user or not grade:
         logger.warning("Получено сообщение без информации о пользователе")
         return
 
     logger.info(
-        f"Пользователь @{message.from_user.username} вызвал команду /schedule для класса {grade}"
+        f"Пользователь {event.from_user.user_id} вызвал команду /schedule для класса {grade}"
     )
 
     rasp = await get_schedule_by_grade(grade)
 
     if not rasp:
-        await message.answer("🚫 Не удалось получить расписание. Попробуйте позже.")
+        await event.message.answer("🚫 Не удалось получить расписание. Попробуйте позже.")
         return
 
-    await message.answer(get_schedule_message(rasp))
+    await event.message.answer(get_schedule_message(rasp))
 
-
+"""
 @command_router.message(
     Command("schedule_today"), flags={"need_grade": True, "cmd": "schedule_today"}
 )

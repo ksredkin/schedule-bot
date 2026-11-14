@@ -1,8 +1,8 @@
 from typing import Any, Awaitable, Callable, Dict
 
-from aiogram import BaseMiddleware
-from aiogram.dispatcher.flags import get_flag
-from aiogram.types import Message
+from maxapi.enums.parse_mode import ParseMode
+from maxapi.filters.middleware import BaseMiddleware
+from maxapi.types import MessageCreated, UpdateUnion
 
 from src.bot.core.exceptions import (
     GradeNotFoundError,
@@ -14,33 +14,36 @@ from src.bot.services.user_service import resolve_grade
 
 
 class GradeMiddleware(BaseMiddleware):
+    def __init__(self, cmd: str):
+        self.cmd = cmd
+
     async def __call__(
         self,
-        handler: Callable[[Message, Dict[str, Any]], Awaitable[Any]],
-        event: Message,  # type: ignore
+        handler: Callable[[UpdateUnion, Dict[str, Any]], Awaitable[Any]],
+        event_object: UpdateUnion,
         data: dict[str, Any],
     ) -> Any:
-        if not event.from_user:
+        if not isinstance(event_object, MessageCreated):
+            return await handler(event_object, data)
+
+        message = event_object.message
+        if not message or not message.sender:
             return
 
-        need_grade = get_flag(data, "need_grade")
-
-        if not need_grade:
-            return await handler(event, data)
-
         db_session = data.get("db_session")
-
         if not db_session:
             raise RuntimeError("GradeMiddleware требует db_session")
 
         user_repo = UserRepository(db_session)
-        cmd = get_flag(data, "cmd") or "cmd"
 
         try:
-            grade = await resolve_grade(event, user_repo, cmd)
+            grade = await resolve_grade(message, user_repo, self.cmd)
         except (GradeNotSelectedError, GradeNotFoundError, InvalidCommandError) as e:
-            await event.answer(f"🚫 <b>Ошибка:</b> {str(e)}")
+            await message.answer(
+                text=f"🚫 <b>Ошибка:</b> {str(e)}",
+                parse_mode=ParseMode.HTML,
+            )
             return
 
         data["grade"] = grade
-        return await handler(event, data)
+        return await handler(event_object, data)

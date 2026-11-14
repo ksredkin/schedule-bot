@@ -1,33 +1,31 @@
-from aiogram import types
+from maxapi.types import Message
 
 from src.bot.core.exceptions import (
     GradeNotFoundError,
     GradeNotSelectedError,
     InvalidCommandError,
 )
-from src.bot.interfaces.user_repository import UserRepositoryInterface
+from src.bot.repositories.user_repository import UserRepository
 from src.bot.services.cache_service import cache_service
 from src.bot.utils.constants import classes
 
 
 async def resolve_grade(
-    message: types.Message,
-    user_repo: UserRepositoryInterface,
+    message: Message,
+    user_repo: UserRepository,
     command_name: str = "cmd",
 ) -> str | None:
-    if not message:
+    if not message or not message.body or not message.body.text:
         return None
 
-    if not message.text or not message.from_user:
+    if not message.sender or not message.sender.user_id:
         return None
 
-    parts = message.text.split()
+    user_id = message.sender.user_id
+    parts = message.body.text.split()
 
     if len(parts) == 1:
-        if not message.from_user:
-            return None
-
-        user_class = await cache_service.get_user_class_from_cache(message.from_user.id)
+        user_class = await cache_service.get_user_class_from_cache(user_id)
 
         if user_class is not None:
             if user_class is False:
@@ -37,7 +35,7 @@ async def resolve_grade(
 
             return str(user_class)
 
-        user = await user_repo.get_user_by_telegram_id(message.from_user.id)
+        user = await user_repo.get_user_by_max_id(user_id)
 
         if not user or not user.grade:
             raise GradeNotSelectedError(
@@ -45,8 +43,7 @@ async def resolve_grade(
             )
 
         grade = str(user.grade)
-
-        await cache_service.set_user_class_in_cache(message.from_user.id, grade)
+        await cache_service.set_user_class_in_cache(user_id, grade)
 
         return grade
 
