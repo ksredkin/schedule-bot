@@ -1,8 +1,9 @@
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from aiogram import BaseMiddleware
-from aiogram.types import TelegramObject
+from maxapi.filters.middleware import BaseMiddleware
+from typing import Any, Awaitable, Callable, Dict
+from maxapi.types import UpdateUnion
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
@@ -12,14 +13,14 @@ class DatabaseSessionMiddleware(BaseMiddleware):
 
     async def __call__(
         self,
-        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
-        event: TelegramObject,
+        handler: Callable[[UpdateUnion, Dict[str, Any]], Awaitable[Any]],
+        event_object: UpdateUnion,
         data: dict[str, Any],
     ) -> Any:
         session: AsyncSession = self.sessionmaker()
         data["db_session"] = session
         try:
-            await handler(event, data)
+            await handler(event_object, data)
             await session.commit()
         except Exception:
             await session.rollback()

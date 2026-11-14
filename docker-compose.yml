@@ -35,6 +35,8 @@ services:
       REDIS_PORT: 6379
       ADMIN_ID: ${ADMIN_ID}
       SENTRY_DSN: ${SENTRY_DSN}
+    volumes:
+      - ./src/bot:/app/src/bot
     networks:
       - schedule-postgres-net
       - schedule-redis-net
@@ -60,6 +62,8 @@ services:
     command: poetry run alembic upgrade head
     depends_on:
       - schedule-postgres
+    volumes:
+      - ./src/bot:/app/src/bot
     networks:
       - schedule-postgres-net
 

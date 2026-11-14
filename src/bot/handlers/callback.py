@@ -1,18 +1,19 @@
 import html
 
-from aiogram import F, Router, types
-from aiogram.fsm.context import FSMContext
+from maxapi import F, Router
+from maxapi.context import MemoryContext, State, StatesGroup
+from maxapi.types import MessageCallback
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.bot.keyboards.inline import (
-    create_cancell_inline_keyboard,
+    create_cancel_inline_keyboard,
     create_inline_keyboard,
 )
 from src.bot.repositories.review_repository import ReviewRepository
 from src.bot.repositories.user_repository import UserRepository
 from src.bot.services.cache_service import cache_service
-from src.bot.states.broadcast_states import BroadcastAll, BroadcastClass
-from src.bot.states.review_states import ReviewReply
+#from src.bot.states.broadcast_states import BroadcastAll, BroadcastClass
+#from src.bot.states.review_states import ReviewReply
 from src.bot.utils.constants import classes
 from src.bot.utils.formatters import get_admin_panel_message
 from src.bot.utils.logger import Logger
@@ -21,13 +22,13 @@ callback_router = Router()
 logger = Logger(__name__).get_logger()
 
 
-@callback_router.callback_query(
-    F.data.startswith("set_my_class:"), flags={"need_db_session": True}
+@callback_router.message_callback(
+    F.callback.payload.startswith("set_my_class:"), flags={"need_db_session": True}
 )
 async def process_class(
-    callback: types.CallbackQuery, db_session: AsyncSession
+    event: MessageCallback, db_session: AsyncSession
 ) -> None:
-    callback_data = callback.data
+    callback_data = event.callback.payload
 
     if not callback_data or not callback_data.startswith("set_my_class:"):
         return
@@ -36,33 +37,35 @@ async def process_class(
 
     user_repository = UserRepository(db_session)
 
-    user = await user_repository.get_user_by_telegram_id(callback.from_user.id)
+    user = await user_repository.get_user_by_max_id(event.from_user.user_id)
 
     if not user:
-        await user_repository.create_user(callback.from_user.id, grade)
+        await user_repository.create_user(event.from_user.user_id, grade)
     else:
-        await user_repository.update_user_grade(callback.from_user.id, grade)
+        await user_repository.update_user_grade(event.from_user.user_id, grade)
 
-    await cache_service.set_user_class_in_cache(callback.from_user.id, grade)
+    await cache_service.set_user_class_in_cache(event.from_user.user_id, grade)
 
-    callback_message = callback.message
-    if not callback_message or not hasattr(callback_message, "edit_text"):
+    callback_message = event.message
+    if not callback_message or not hasattr(callback_message, "edit"):
         logger.warning("Получен callback без доступного сообщения для редактирования")
         return
 
-    await callback_message.edit_text("✅ Ваш класс успешно обновлен!")
+    await callback_message.edit("✅ Ваш класс успешно обновлен!", attachments=[])
 
 
-@callback_router.callback_query(F.data == "cancell")
-async def cancell(callback: types.CallbackQuery) -> None:
-    callback_message = callback.message
-    if not callback_message or not hasattr(callback_message, "edit_text"):
+@callback_router.message_callback(F.callback.payload == "cancel")
+async def cancell(event: MessageCallback, context: MemoryContext) -> None:
+    await context.clear()
+    
+    callback_message = event.message
+    if not callback_message or not hasattr(callback_message, "edit"):
         logger.warning("Получен callback без доступного сообщения для редактирования")
         return
 
-    await callback_message.edit_text("✅ Действие отменено!")
+    await callback_message.edit("✅ Действие отменено!", attachments=[])
 
-
+"""
 @callback_router.callback_query(F.data == "get_admin_panel", flags={"need_admin": True})
 async def get_admin_panel(
     callback: types.CallbackQuery, db_session: AsyncSession
@@ -187,12 +190,12 @@ async def select_review(
         )
         return
 
-    text = f"""<b>Отзыв №{review.id}</b>
+    text = f""""""<b>Отзыв №{review.id}</b>
 
 От: {review.telegram_id}
 Дата: {review.created_at.strftime("%Y-%m-%d %H:%M:%S")}
 
-{html.escape(str(review.text))}"""
+{html.escape(str(review.text))}""""""
 
     buttons = {
         "✅ Прочитано": f"mark_reviewed:{review.id}",
@@ -377,12 +380,12 @@ async def select_archived_review(
         )
         return
 
-    text = f"""<b>Отзыв №{review.id}</b>
+    text = f""""""<b>Отзыв №{review.id}</b>
 
 От: {review.telegram_id}
 Дата: {review.created_at.strftime("%Y-%m-%d %H:%M:%S")}
 
-{html.escape(str(review.text))}"""
+{html.escape(str(review.text))}""""""""
 
     buttons = {
         "↩️ Вернуть": f"restore_archived_review:{review.id}",
@@ -531,3 +534,4 @@ async def select_broadcast_class(
     logger.info(
         f"Пользователь @{callback.from_user.username} с id {callback.from_user.id} выбрал класс {selected_class} для рассылки"
     )
+"""

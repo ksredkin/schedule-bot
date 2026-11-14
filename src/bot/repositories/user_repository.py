@@ -34,14 +34,14 @@ class UserRepository(UserRepositoryInterface):
         )
         return {row[0]: row[1] for row in result.all()}
 
-    async def get_user_by_telegram_id(self, telegram_id: int) -> User | None:
+    async def get_user_by_max_id(self, max_id: int) -> User | None:
         result = await self.session.execute(
-            select(User).where(User.telegram_id == telegram_id)
+            select(User).where(User.max_id == max_id)
         )
         return result.scalar_one_or_none()
 
-    async def create_user(self, telegram_id: int, grade: str | None) -> User:
-        user = User(telegram_id=telegram_id, grade=grade.lower() if grade else None)
+    async def create_user(self, max_id: int, grade: str | None) -> User:
+        user = User(max_id=max_id, grade=grade.lower() if grade else None)
         self.session.add(user)
 
         await self.session.flush()
@@ -49,9 +49,9 @@ class UserRepository(UserRepositoryInterface):
 
         return user
 
-    async def update_user_grade(self, telegram_id: int, grade: str) -> User | None:
+    async def update_user_grade(self, max_id: int, grade: str) -> User | None:
         result = await self.session.execute(
-            select(User).where(User.telegram_id == telegram_id)
+            select(User).where(User.max_id == max_id)
         )
         user = result.scalars().first()
 

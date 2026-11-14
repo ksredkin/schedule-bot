@@ -9,14 +9,14 @@ Base = declarative_base()
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
-    telegram_id = Column(BigInteger, unique=True)
+    max_id = Column(BigInteger, unique=True)
     grade = Column(String, nullable=True)
 
 
 class Review(Base):
     __tablename__ = "reviews"
     id = Column(Integer, primary_key=True)
-    telegram_id = Column(BigInteger)
+    max_id = Column(BigInteger)
     text = Column(String)
     status = Column(String, default="pending")
     created_at = Column(

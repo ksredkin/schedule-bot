@@ -41,20 +41,26 @@ class CacheService:
         logger.info(f"Данные сохранены в кэш: {full_key}{ttl_str}")
 
     async def get_image_id_from_cache(self, image: str) -> str | bool | None:
-        return await self.get("image", image)
+        return await self.get(f"image:{image}", "id")
 
     async def set_image_id_in_cache(self, image: str, image_id: str) -> None:
-        await self.set("image", image, image_id, IMAGE_CACHE_EXPIRATION_SECONDS)
+        await self.set(f"image:{image}", "id", image_id, IMAGE_CACHE_EXPIRATION_SECONDS)
 
-    async def get_user_class_from_cache(self, telegram_id: int) -> str | bool | None:
-        return await self.get("user", f"{telegram_id}:class")
+    async def get_image_token_from_cache(self, image: str) -> str | bool | None:
+        return await self.get(f"image:{image}", "token")
+    
+    async def set_image_token_in_cache(self, image: str, token: str) -> None:
+        await self.set(f"image:{image}", "token", token, IMAGE_CACHE_EXPIRATION_SECONDS)
+
+    async def get_user_class_from_cache(self, max_id: int) -> str | bool | None:
+        return await self.get("user", f"{max_id}:class")
 
     async def set_user_class_in_cache(
-        self, telegram_id: int, grade: str | None
+        self, max_id: int, grade: str | None
     ) -> None:
         value = grade if grade is not None else NONE_SENTINEL
         await self.set(
-            "user", f"{telegram_id}:class", value, USER_CLASS_CACHE_EXPIRATION_SECONDS
+            "user", f"{max_id}:class", value, USER_CLASS_CACHE_EXPIRATION_SECONDS
         )
 
     async def get_changes_from_cache(

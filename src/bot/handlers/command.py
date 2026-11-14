@@ -1,22 +1,22 @@
 from datetime import datetime
 
 import pytz
-from aiogram import Router, types
-from aiogram.exceptions import TelegramNetworkError
-from aiogram.filters import Command, CommandStart
-from aiogram.fsm.context import FSMContext
+from maxapi import Router, types
+from maxapi.exceptions import MaxApiError
+from maxapi.types import Command, MessageCreated, InputMedia, AttachmentUpload
+#from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.bot.keyboards.inline import (
-    create_cancell_inline_keyboard,
-    create_inline_keyboard,
+    create_cancel_inline_keyboard,
+#    create_inline_keyboard,
 )
 from src.bot.messages.common import before_review_message, start_message
 from src.bot.repositories.review_repository import ReviewRepository
 from src.bot.repositories.user_repository import UserRepository
 from src.bot.services.cache_service import cache_service
-from src.bot.services.schedule_service import get_schedule_by_grade
-from src.bot.states.review_states import ReviewCreate
+#from src.bot.services.schedule_service import get_schedule_by_grade
+#from src.bot.states.review_states import ReviewCreate
 from src.bot.utils.constants import classes, days_map
 from src.bot.utils.formatters import (
     get_admin_panel_message,
@@ -35,82 +35,83 @@ from src.bot.utils.time_utils import get_current_lesson, get_time_to_bell
 command_router = Router()
 logger = Logger(__name__).get_logger()
 
+@command_router.message_created(Command("start"))
+async def start(event: MessageCreated, db_session: AsyncSession) -> None:
+    logger.info(f"Пользователь {event.from_user.user_id} вызвал команду /start")
 
-@command_router.message(CommandStart(), flags={"need_grade": False})
-async def start(message: types.Message, db_session: AsyncSession) -> None:
-    if not message.from_user:
+    user_class_in_cache = await cache_service.get_user_class_from_cache(
+        event.from_user.user_id
+    )
+    
+    if user_class_in_cache is None:
+        logger.info(
+            f"Класс пользователя {event.from_user.user_id} не найден в кэше"
+        )
+        user_repository = UserRepository(db_session)
+        user = await user_repository.get_user_by_max_id(event.from_user.user_id)
+    
+        if not user:
+                logger.info(
+                    f"Пользователь {event.from_user.user_id} не найден в базе данных, создается новый пользователь"
+                )
+                await user_repository.create_user(
+                    max_id=event.from_user.user_id, grade=None
+                )
+                await cache_service.set_user_class_in_cache(event.from_user.user_id, None)
+        else:
+                if user.grade:
+                    logger.info(
+                        f"Класс пользователя {event.from_user.user_id} найден в базе данных: {user.grade}, сохраняется в кэше"
+                    )
+                    await cache_service.set_user_class_in_cache(
+                        event.from_user.user_id, str(user.grade)
+                    )
+                else:
+                    logger.info(
+                        f"Класс пользователя {event.from_user.user_id} не установлен в базе данных"
+                    )
+                    await cache_service.set_user_class_in_cache(event.from_user.user_id, None)
+    
+    elif user_class_in_cache is False:
+            logger.info(
+                f"Класс пользователя {event.from_user.user_id} установлен как None в кэше"
+            )
+
+    cached_image_id = await cache_service.get_image_id_from_cache("start")
+    cached_token = await cache_service.get_image_token_from_cache("start")
+
+    if cached_image_id and cached_token:
+        try:
+            image = AttachmentUpload(type="image", payload={"token": cached_token, "photo_id": cached_image_id})
+            await event.message.answer(start_message, disable_link_preview=True, attachments=[image])
+        except MaxApiError:
+            sent = await event.message.answer(start_message, disable_link_preview=True, attachments=[InputMedia(path="./src/bot/img/bot.png")])
+            await cache_service.set_image_id_in_cache("start", sent.message.body.attachments[0].payload.photo_id)
+            await cache_service.set_image_token_in_cache("start", sent.message.body.attachments[0].payload.token)
+    else:
+        sent = await event.message.answer(start_message, disable_link_preview=True, attachments=[InputMedia(path="./src/bot/img/bot.png")])
+        await cache_service.set_image_id_in_cache("start", sent.message.body.attachments[0].payload.photo_id)
+        await cache_service.set_image_token_in_cache("start", sent.message.body.attachments[0].payload.token)
+
+
+@command_router.message_created(Command("set_my_class"), flags={"need_grade": False})
+async def set_my_class(event: MessageCreated) -> None:
+    if not event.from_user.user_id:
         logger.warning("Получено сообщение без информации о пользователе")
         return
 
-    logger.info(f"Пользователь @{message.from_user.username} вызвал команду /start")
-
-    user_class_in_cache = await cache_service.get_user_class_from_cache(
-        message.from_user.id
+    logger.info(
+        f"Пользователь {event.from_user.user_id} вызвал команду /set_my_class"
     )
 
-    if user_class_in_cache is None:
-        logger.info(
-            f"Класс пользователя @{message.from_user.username} не найден в кэше"
-        )
-        user_repository = UserRepository(db_session)
-        user = await user_repository.get_user_by_telegram_id(message.from_user.id)
+    buttons = {grade: "set_my_class:" + grade.lower() for grade in classes}
 
-        if not user:
-            logger.info(
-                f"Пользователь @{message.from_user.username} не найден в базе данных, создается новый пользователь"
-            )
-            await user_repository.create_user(
-                telegram_id=message.from_user.id, grade=None
-            )
-            await cache_service.set_user_class_in_cache(message.from_user.id, None)
-        else:
-            if user.grade:
-                logger.info(
-                    f"Класс пользователя @{message.from_user.username} найден в базе данных: {user.grade}, сохраняется в кэше"
-                )
-                await cache_service.set_user_class_in_cache(
-                    message.from_user.id, str(user.grade)
-                )
-            else:
-                logger.info(
-                    f"Класс пользователя @{message.from_user.username} не установлен в базе данных"
-                )
-                await cache_service.set_user_class_in_cache(message.from_user.id, None)
+    await event.message.answer(
+        text="📃 Выберите Ваш класс из списка:",
+        attachments=[create_cancel_inline_keyboard(buttons, sizes=(2,))],
+    )
 
-    elif user_class_in_cache is False:
-        logger.info(
-            f"Класс пользователя @{message.from_user.username} установлен как None в кэше"
-        )
-
-    if await cache_service.get_image_id_from_cache("start") is None:
-        try:
-            image = types.FSInputFile("./src/bot/img/bot.png")
-            message = await message.answer_photo(image, caption=start_message)
-
-            if not message.photo:
-                logger.warning("Ответ на /start не содержит фото")
-                await message.answer(start_message)
-                return
-
-            await cache_service.set_image_id_in_cache(
-                "start", message.photo[-1].file_id
-            )
-        except TelegramNetworkError:
-            logger.warning("Не удалось отправить ответ с фото на /start")
-            await message.answer(start_message)
-    else:
-        cached_image_id = await cache_service.get_image_id_from_cache("start")
-
-        if not isinstance(cached_image_id, str):
-            logger.warning(
-                "Кэш для фото ответа на /start содержит некорректное значение"
-            )
-            await message.answer(start_message)
-            return
-
-        await message.answer_photo(cached_image_id, caption=start_message)
-
-
+"""
 @command_router.message(
     Command("schedule"), flags={"need_grade": True, "cmd": "schedule"}
 )
@@ -284,24 +285,6 @@ async def bell(message: types.Message, grade: str) -> None:
     await message.answer(get_bell_message(time_to_bell))
 
 
-@command_router.message(Command("set_my_class"), flags={"need_grade": False})
-async def set_my_class(message: types.Message) -> None:
-    if not message.from_user:
-        logger.warning("Получено сообщение без информации о пользователе")
-        return
-
-    logger.info(
-        f"Пользователь @{message.from_user.username} вызвал команду /set_my_class"
-    )
-
-    buttons = {grade: "set_my_class:" + grade.lower() for grade in classes}
-
-    await message.answer(
-        "📃 Выберите Ваш класс из списка:",
-        reply_markup=create_cancell_inline_keyboard(buttons),
-    )
-
-
 @command_router.message(
     Command("changes"), flags={"need_grade": True, "cmd": "changes"}
 )
@@ -397,3 +380,4 @@ async def review(message: types.Message, state: FSMContext) -> None:
     await message.answer(
         before_review_message, reply_markup=create_cancell_inline_keyboard({})
     )
+"""
