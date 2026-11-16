@@ -259,40 +259,43 @@ async def lesson(event: MessageCreated, grade: str) -> None:
 
     await event.message.answer(get_lesson_message(number, lesson))
 
-"""
-@command_router.message(Command("bell"), flags={"need_grade": True, "cmd": "bell"})
-async def bell(message: types.Message, grade: str) -> None:
-    if not message.from_user or not grade:
+
+@command_router.message_created(
+    Command("bell"), 
+    GradeMiddleware(cmd="bell"),
+)
+async def bell(event: MessageCreated, grade: str) -> None:
+    if not event.from_user or not grade:
         logger.warning("Получено сообщение без информации о пользователе")
         return
 
     logger.info(
-        f"Пользователь @{message.from_user.username} вызвал команду /bell для класса {grade}"
+        f"Пользователь {event.from_user.user_id} вызвал команду /bell для класса {grade}"
     )
 
     now = datetime.now()
     current_day = days_map.get(now.weekday())
 
     if not current_day:
-        await message.answer("🏝️ Сегодня выходной!")
+        await event.message.answer("🏝️ Сегодня выходной!")
         return
 
     rasp = await get_schedule_by_grade(grade)
 
     if not rasp:
-        await message.answer("🚫 Не удалось получить расписание. Попробуйте позже.")
+        await event.message.answer("🚫 Не удалось получить расписание. Попробуйте позже.")
         return
 
     now = datetime.now(pytz.timezone("Europe/Moscow"))
     time_to_bell, _ = get_time_to_bell(rasp, now)
 
     if not time_to_bell:
-        await message.answer("🏝️ Сейчас нет уроков.")
+        await event.message.answer("🏝️ Сейчас нет уроков.")
         return
 
-    await message.answer(get_bell_message(time_to_bell))
+    await event.message.answer(get_bell_message(time_to_bell))
 
-
+"""
 @command_router.message(
     Command("changes"), flags={"need_grade": True, "cmd": "changes"}
 )
